@@ -14,4 +14,4 @@ def test_home(client):
 def test_feature(client):
     response = client.get('/feature')
     assert response.status_code == 200
-    assert b"THIS WILL FAIL" in response.data
+    assert b"Marketing Feature" in response.data
