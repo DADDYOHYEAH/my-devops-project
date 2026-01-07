@@ -2,3 +2,4 @@ flask
 pytest
 pip-audit
 flake8
+filelock==3.20.1
