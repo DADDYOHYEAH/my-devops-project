@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: flask-app-deployment
 spec:
-  replicas: 3  # Demonstrates Scalability
+  replicas: 3
   selector:
     matchLabels:
       app: flask-app
@@ -14,7 +14,8 @@ spec:
     spec:
       containers:
       - name: flask-app
-        image: image: daddyohyeah/my-app:latest # You must replace this
+        # I have already put your username here. Do not add spaces or change indentation.
+        image: daddyohyeah/my-app:latest
         ports:
         - containerPort: 5000
         resources:
