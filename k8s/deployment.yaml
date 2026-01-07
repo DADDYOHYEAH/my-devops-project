@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: flask-app
-        image: your-dockerhub-username/my-app:latest # You must replace this
+        image: image: daddyohyeah/my-app:latest # You must replace this
         ports:
         - containerPort: 5000
         resources:
