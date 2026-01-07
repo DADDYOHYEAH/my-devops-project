@@ -16,7 +16,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.10'  # <--- UPDATED TO 3.10
           cache: 'pip'
 
       - name: Install Dependencies
@@ -55,5 +55,4 @@ jobs:
         with:
           context: .
           push: true
-          # This pushes the image to your Docker Hub account
           tags: ${{ secrets.DOCKER_USERNAME }}/my-app:latest
