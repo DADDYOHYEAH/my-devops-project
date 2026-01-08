@@ -9,8 +9,10 @@ def client():
 def test_home(client):
     response = client.get('/')
     assert response.status_code == 200
-    # We now check for the new title instead of "Hello!"
-    assert b"DevOps Master" in response.data
+    # Check for the new title in the HTML
+    assert b"DevOps Dashboard" in response.data
+    # Check if the "Pod ID" label is present
+    assert b"Running on Pod ID" in response.data
 
 def test_feature(client):
     response = client.get('/feature')
