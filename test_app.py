@@ -9,7 +9,8 @@ def client():
 def test_home(client):
     response = client.get('/')
     assert response.status_code == 200
-    assert b"Hello!" in response.data
+    # We now check for the new title instead of "Hello!"
+    assert b"DevOps Master" in response.data
 
 def test_feature(client):
     response = client.get('/feature')
