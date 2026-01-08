@@ -16,9 +16,29 @@ spec:
       - name: flask-app
         # I have already put your username here. Do not add spaces or change indentation.
         image: daddyohyeah/my-app:latest
+        
+        # --- CD FIX: Ensures K8s always pulls the new image on restart ---
+        imagePullPolicy: Always 
+        # -----------------------------------------------------------------
+
         ports:
         - containerPort: 5000
         resources:
           limits:
             memory: "128Mi"
             cpu: "500m"
+        
+        # --- AVAILABILITY FIX: Auto-restarts if app freezes ---
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        # ------------------------------------------------------

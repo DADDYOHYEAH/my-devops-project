@@ -11,6 +11,11 @@ WORKDIR /app
 COPY --from=builder /root/.local /root/.local
 COPY . .
 
+# --- SECURITY FIX: Run as non-root user ---
+RUN adduser --disabled-password --gecos '' appuser
+USER appuser
+# ------------------------------------------
+
 # Ensure scripts are in PATH
 ENV PATH=/root/.local/bin:$PATH
 
