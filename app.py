@@ -6,6 +6,7 @@ from flask import Flask, render_template_string
 app = Flask(__name__)
 
 # --- NEOBRUTALISM TEMPLATE ---
+# We use a simple placeholder "" to inject page content safely.
 BASE_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -117,7 +118,7 @@ def home():
             ⚖️ Auto-Scaling Enabled
         </div>
     """
-    # CRITICAL FIX: Ensure we merge the content into the base template
+    # MERGE STEP: Put page_content INSIDE the BASE_TEMPLATE
     final_html = BASE_TEMPLATE.replace("", page_content)
     return render_template_string(final_html)
 
