@@ -6,25 +6,22 @@ body {
     align-items: center;
     height: 100vh;
     margin: 0;
-    /* Same gradient as main page */
     background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
     font-family: 'Poppins', sans-serif;
 }
 
 .container {
     text-align: center;
-    background: rgba(255, 255, 255, 0.9);
-    padding: 40px;
-    border-radius: 20px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-    max-width: 90%;
+    /* REMOVED: background and shadow */
+    z-index: 10;
 }
 
 .header_text {
     font-family: 'Great Vibes', cursive;
-    font-size: 4em; /* Very big celebration text */
-    color: #e91e63;
+    font-size: 4.5em; 
+    color: #d32f2f;
     margin-bottom: 20px;
+    text-shadow: 0px 0px 10px rgba(255, 255, 255, 0.8);
     animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
@@ -33,10 +30,9 @@ body {
     max-width: 500px; 
     height: auto; 
     border-radius: 15px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
 }
 
-/* Simple pop-in animation for the text */
 @keyframes popIn {
     0% { transform: scale(0); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
