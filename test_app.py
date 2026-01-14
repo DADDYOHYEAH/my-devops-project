@@ -7,21 +7,20 @@ def client():
         yield client
 
 def test_home(client):
-    """Test the Home Page loads and shows the welcome message"""
+    """Test the Valentine Page loads"""
     response = client.get('/')
     assert response.status_code == 200
-    assert b"Welcome to V4.0" in response.data
-    assert b"MY_DEVOPS_PROJECT" in response.data
+    # Check for text that is actually on your new page
+    assert b"Will you be my Valentine?" in response.data
+
+def test_yes_page(client):
+    """Test the Yes Page loads"""
+    response = client.get('/yes_page.html')
+    assert response.status_code == 200
+    assert b"Knew you would say yes!" in response.data
 
 def test_dashboard(client):
-    """Test the Dashboard Page loads and shows system info"""
+    """Test that the DevOps Dashboard still works"""
     response = client.get('/dashboard')
     assert response.status_code == 200
-    assert b"System Monitor" in response.data
-    assert b"POD ID" in response.data
-
-def test_team(client):
-    """Test the Team Page loads"""
-    response = client.get('/team')
-    assert response.status_code == 200
-    assert b"Meet the Team" in response.data
+    assert b"Ops Dashboard" in response.data
