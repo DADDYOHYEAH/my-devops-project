@@ -5,7 +5,8 @@ from flask import Flask, render_template_string
 
 app = Flask(__name__)
 
-# --- NEOBRUTALISM TEMPLATE ---
+# --- NEOBRUTALISM TEMPLATE (Fixed) ---
+# Notice we use a unique placeholder "" instead of Jinja blocks
 BASE_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -101,17 +102,15 @@ BASE_TEMPLATE = """
     </div>
 
     <div class="container">
-        {% block content %}{% endblock %}
-    </div>
+        </div>
 </body>
 </html>
 """
 
 @app.route('/')
 def home():
-    content = """
-    {% extends "base" %}
-    {% block content %}
+    # Page specific HTML
+    page_content = """
         <h1>Welcome to V4.0</h1>
         <p style="font-size: 1.2rem;">
             This is a fully automated, high-availability web application deployed using Kubernetes.
@@ -125,9 +124,10 @@ def home():
         <div class="stat-box" style="background:#ffde59;">
             ⚖️ Auto-Scaling Enabled
         </div>
-    {% endblock %}
     """
-    return render_template_string(content.replace('{% extends "base" %}', BASE_TEMPLATE))
+    # Merge the base template with the page content
+    final_html = BASE_TEMPLATE.replace("", page_content)
+    return render_template_string(final_html)
 
 @app.route('/dashboard')
 def dashboard():
@@ -136,9 +136,8 @@ def dashboard():
     platform = os.uname().sysname if hasattr(os, 'uname') else 'Windows'
     current_time = datetime.now().strftime("%H:%M:%S")
     
-    content = """
-    {% extends "base" %}
-    {% block content %}
+    # Page specific HTML
+    page_content = """
         <h1>System Monitor</h1>
         <p>Real-time metrics from the containerized environment.</p>
         
@@ -151,16 +150,16 @@ def dashboard():
         <div class="stat-box">
             <span>TIME:</span> <span style="float:right;">{{ current_time }}</span>
         </div>
-    {% endblock %}
     """
-    return render_template_string(content.replace('{% extends "base" %}', BASE_TEMPLATE), 
-                                pod_name=pod_name, platform=platform, current_time=current_time)
+    
+    # Merge first, then render (so {{ pod_name }} gets filled)
+    final_html = BASE_TEMPLATE.replace("", page_content)
+    return render_template_string(final_html, pod_name=pod_name, platform=platform, current_time=current_time)
 
 @app.route('/team')
 def team():
-    content = """
-    {% extends "base" %}
-    {% block content %}
+    # Page specific HTML
+    page_content = """
         <h1>Meet the Team</h1>
         <p>The engineers behind this DevOps infrastructure.</p>
         <ul>
@@ -168,9 +167,9 @@ def team():
             <li><strong>QA Specialist:</strong> [Your Name]</li>
             <li><strong>Site Reliability Engineer:</strong> [Your Name]</li>
         </ul>
-    {% endblock %}
     """
-    return render_template_string(content.replace('{% extends "base" %}', BASE_TEMPLATE))
+    final_html = BASE_TEMPLATE.replace("", page_content)
+    return render_template_string(final_html)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
