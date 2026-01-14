@@ -1,51 +1,84 @@
+/* Import fonts just in case, though we added them in HTML */
+@import url('https://fonts.googleapis.com/css2?family=Great+Vibes&family=Poppins:wght@400;600&display=swap');
+
 body {
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
     margin: 0;
-    background-color: #f9e3e3;
-    font-family: 'Arial', sans-serif;
-    flex-direction: column;
+    /* UPGRADE: Soft romantic gradient instead of flat color */
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
+    font-family: 'Poppins', sans-serif; /* Cleaner modern font */
+    overflow: hidden; /* Prevents scrollbars if animations go off screen */
 }
 
 .container {
     text-align: center;
+    /* UPGRADE: Glassmorphism effect (semi-transparent white card) */
+    background: rgba(255, 255, 255, 0.9);
+    padding: 40px;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1); /* Soft shadow */
+    max-width: 90%;
+    width: 500px;
+    z-index: 10; /* Keep on top of background hearts */
 }
 
 h1 {
-    font-size: 2.5em;
-    color: #d32f2f;
-}
-
-.buttons {
-    margin-top: 20px;
-}
-
-.yes-button {
-    font-size: 1.5em;
-    padding: 10px 20px;
-    margin-right: 10px;
-    background-color: #4caf50;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.no-button {
-    font-size: 1.5em;
-    padding: 10px 20px;
-    background-color: #f44336;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
+    /* UPGRADE: Romantic cursive font */
+    font-family: 'Great Vibes', cursive;
+    font-size: 3.5em; /* Larger */
+    color: #e91e63;
+    margin-bottom: 20px;
+    text-shadow: 2px 2px 0px rgba(0,0,0,0.05);
 }
 
 .gif_container img {
     max-width: 100%;
     height: auto;
-    border-radius: 10px;
+    border-radius: 15px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.buttons {
     margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    gap: 20px; /* Space between buttons */
+    flex-wrap: wrap; /* Allows wrapping on small screens */
+}
+
+.yes-button {
+    font-size: 1.5em;
+    padding: 12px 30px;
+    background-color: #ff4081; /* Brighter Pink */
+    color: white;
+    border: none;
+    border-radius: 50px; /* Pill shape */
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    font-weight: 600;
+}
+
+.yes-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 5px 15px rgba(255, 64, 129, 0.4);
+}
+
+.no-button {
+    font-size: 1.5em;
+    padding: 12px 30px;
+    background-color: #ef5350; /* Softer Red */
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.no-button:hover {
+    background-color: #e53935;
 }
