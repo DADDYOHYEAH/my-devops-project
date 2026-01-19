@@ -237,7 +237,8 @@ def test_search_endpoint(client):
                 "id": 55555,
                 "title": "Searched Movie",
                 "poster_path": "/search_poster.jpg",
-                "vote_average": 7.5
+                "vote_average": 7.5,
+                "media_type": "movie"  # <--- ADDED THIS: Required for app.py filter
             }
         ]
     }
@@ -249,13 +250,10 @@ def test_search_endpoint(client):
         return mock_response
     
     with patch('app.requests.get', side_effect=mock_get):
-        response = client.get('/search?q=test')
+        # FIX: Changed URL from '/search' to '/api/search'
+        response = client.get('/api/search?q=test')
         
         assert response.status_code == 200
         data = response.get_json()
         assert 'results' in data
         assert len(data['results']) == 1
-
-
-if __name__ == "__main__":
-    pytest.main([__file__, "-v"])
