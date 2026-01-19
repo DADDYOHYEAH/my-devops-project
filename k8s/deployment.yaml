@@ -36,12 +36,16 @@ spec:
           httpGet:
             path: /
             port: 5000
-          initialDelaySeconds: 15
-          periodSeconds: 20
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10        # <--- ADD THIS (Wait 10s for reply, not 1s)
+          failureThreshold: 3
+
         readinessProbe:
           httpGet:
             path: /
             port: 5000
           initialDelaySeconds: 5
           periodSeconds: 10
+          timeoutSeconds: 10
         # ------------------------------------------------------
