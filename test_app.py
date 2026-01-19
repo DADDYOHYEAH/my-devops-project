@@ -19,7 +19,7 @@ def client():
     """Create a test client for the Flask application"""
     app.config['TESTING'] = True
     with app.test_client() as client:
-        yield client
+        yield 
 
 
 @pytest.fixture(autouse=True)
