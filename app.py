@@ -11,11 +11,12 @@ TMDB_API_KEY = "c98a3689e4042e45c726454885e21739"
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 
-# In-memory watchlist storage
+# In-memory watchlist storage   / temporary database to store the movie watchlist 
+# A simple list to store the user's watchlist temporarily
 watchlist = []
 
 
-def fetch_trending_movies():
+def fetch_trending_movies():  # this fucntion ensures homepage always show fresh content without us havvng to update it manually or hardcoded into the code itself by hitting external api 
     """Fetch trending movies of the week from TMDB API"""
     url = f"{TMDB_BASE_URL}/trending/movie/week"
     params = {"api_key": TMDB_API_KEY}
@@ -27,7 +28,7 @@ def fetch_trending_movies():
         return []
 
 
-def fetch_top_rated_movies():
+def fetch_top_rated_movies():  # it fetches top rated movies like classic movies . it uses the same endpoint but uses different endpoints to categorize the content for the usetr 
     """Fetch top rated movies from TMDB API"""
     url = f"{TMDB_BASE_URL}/movie/top_rated"
     params = {"api_key": TMDB_API_KEY}
@@ -39,7 +40,7 @@ def fetch_top_rated_movies():
         return []
 
 
-def search_multi(query):
+def search_multi(query):  # takes a user search and only return movies and tv series removing actors or other random data . 
     """Search movies and TV series by query from TMDB API (multi-search)"""
     url = f"{TMDB_BASE_URL}/search/multi"
     params = {"api_key": TMDB_API_KEY, "query": query}
@@ -54,7 +55,7 @@ def search_multi(query):
         return []
 
 
-def fetch_tv_details(tv_id):
+def fetch_tv_details(tv_id): # gets the huge details for a tv show , cast season , episode anf the youtbe trailer that allows us tp embed the trailer into the detaoil page 
     """Fetch detailed TV series info including cast and crew"""
     url = f"{TMDB_BASE_URL}/tv/{tv_id}"
     params = {"api_key": TMDB_API_KEY, "append_to_response": "credits,videos"}
@@ -110,7 +111,7 @@ def fetch_tv_details(tv_id):
         return None
 
 
-def fetch_movie_details(movie_id):
+def fetch_movie_details(movie_id): # same as above but for movies
     """Fetch detailed movie info including cast and crew"""
     # Get movie details
     url = f"{TMDB_BASE_URL}/movie/{movie_id}"
@@ -168,7 +169,7 @@ def fetch_movie_details(movie_id):
         return None
 
 
-@app.route("/")
+@app.route("/") # it gets the trending and top rated dats and also picks the #1 movie for the hero banner image at the top of the homepage anfd sends it all to index.htm; 
 def index():
     """Main page with trending, top rated movies and watchlist"""
     trending = fetch_trending_movies()
@@ -187,7 +188,7 @@ def index():
     )
 
 
-@app.route("/search")
+@app.route("/search")  # simopl l0ads the dedicatedn search page
 def search_page():
     """Render the dedicated search page"""
     trending = fetch_trending_movies()
@@ -197,7 +198,7 @@ def search_page():
         image_base=TMDB_IMAGE_BASE
     )
 
-@app.route("/api/search")
+@app.route("/api/search")  # created a dedicaeted API endpoint for search . this returns json data instead of html . this allows the frontend to update search result as instantly as the user types without haveing to reload the whole page
 def search():
     """Search endpoint for querying movies and TV series"""
     query = request.args.get("q", "")
@@ -208,7 +209,7 @@ def search():
     return jsonify({"results": results, "image_base": TMDB_IMAGE_BASE})
 
 
-@app.route("/movie/<int:movie_id>")
+@app.route("/movie/<int:movie_id>") # loads the deutial page for specific m0vie or tv show . so capture id from url feed the relevant detils and then render movie_detail.html page 
 def get_movie_details(movie_id):
     """Render full movie detail page"""
     details = fetch_movie_details(movie_id)
@@ -221,7 +222,7 @@ def get_movie_details(movie_id):
     return render_template("404.html"), 404
 
 
-@app.route("/tv/<int:tv_id>")
+@app.route("/tv/<int:tv_id>") # loads the deutial page for specific m0vie or tv show . so capture id from url feed the relevant detils and then render movie_detail.html page 
 def get_tv_details(tv_id):
     """Render full TV series detail page"""
     details = fetch_tv_details(tv_id)
@@ -234,7 +235,7 @@ def get_tv_details(tv_id):
     return render_template("404.html"), 404
 
 
-@app.route("/watch/movie/<int:movie_id>")
+@app.route("/watch/movie/<int:movie_id>")  # pass the correct movie id to the player template , which embed the third party video player vidking 
 def watch_movie(movie_id):
     """Render movie player page with VidKing embed"""
     details = fetch_movie_details(movie_id)
@@ -248,7 +249,8 @@ def watch_movie(movie_id):
     return render_template("404.html"), 404
 
 
-@app.route("/watch/tv/<int:tv_id>/<int:season>/<int:episode>")
+@app.route("/watch/tv/<int:tv_id>/<int:season>/<int:episode>") #  pass the correct tv show  id to the player template , which embed the third party video player vidking 
+def watch_movie(movie_id):
 def watch_tv(tv_id, season, episode):
     """Render TV player page with VidKing embed"""
     details = fetch_tv_details(tv_id)
@@ -265,7 +267,7 @@ def watch_tv(tv_id, season, episode):
     return render_template("404.html"), 404
 
 
-@app.route("/api/movie/<int:movie_id>")
+@app.route("/api/movie/<int:movie_id>") # provide raw json detail so user can see deytauks quicly wihtut lewving the home page
 def get_movie_details_api(movie_id):
     """API endpoint for movie details (JSON)"""
     details = fetch_movie_details(movie_id)
@@ -274,7 +276,7 @@ def get_movie_details_api(movie_id):
     return jsonify({"success": False, "message": "Movie not found"}), 404
 
 
-@app.route("/api/tv/<int:tv_id>")
+@app.route("/api/tv/<int:tv_id>")  # provide raw json data to show tv show detail
 def get_tv_details_api(tv_id):
     """API endpoint for TV series details (JSON)"""
     details = fetch_tv_details(tv_id)
@@ -283,7 +285,7 @@ def get_tv_details_api(tv_id):
     return jsonify({"success": False, "message": "TV series not found"}), 404
 
 
-@app.route("/watchlist/add", methods=["POST"])
+@app.route("/watchlist/add", methods=["POST"])   # validation logic here to prevent duplicate entry . returns 400 error if aalready in the list 
 def add_to_watchlist():
     """Add a movie to the watchlist"""
     data = request.get_json()
@@ -313,7 +315,7 @@ def add_to_watchlist():
     return jsonify({"success": True, "message": "Movie added to watchlist", "watchlist": watchlist})
 
 
-@app.route("/watchlist/remove", methods=["POST"])
+@app.route("/watchlist/remove", methods=["POST"])  # removes a movie form watchlist . if id isnt ffound it returns 404 error
 def remove_from_watchlist():
     """Remove a movie from the watchlist"""
     data = request.get_json()
@@ -339,7 +341,7 @@ def remove_from_watchlist():
     return jsonify({"success": True, "message": "Movie removed from watchlist", "watchlist": watchlist})
 
 
-@app.route("/watchlist")
+@app.route("/watchlist")  # allows rhe full list as json data .
 def get_watchlist():
     """Get current watchlist"""
     return jsonify({"watchlist": watchlist})

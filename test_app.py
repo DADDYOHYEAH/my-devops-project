@@ -24,7 +24,7 @@ def client():
 
 @pytest.fixture(autouse=True)
 def reset_watchlist():
-    """Reset watchlist before each test"""
+    """Reset watchlist before each test to ensure isolation"""
     # global watchlist  <-- DELETED THIS LINE
     from app import watchlist as wl
     wl.clear()

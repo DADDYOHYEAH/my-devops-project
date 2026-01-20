@@ -1,3 +1,5 @@
+# This handles Scalability. It automatically adds more pods when traffic gets high.#
+
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
@@ -7,6 +9,9 @@ spec:
     apiVersion: apps/v1
     kind: Deployment
     name: flask-app-deployment
+  # SCALABILITY: Automatically scale between 2 and 10 pods
   minReplicas: 2
   maxReplicas: 10
+
+  # TRIGGER: Add more pods if CPU usage goes above 70%
   targetCPUUtilizationPercentage: 70
