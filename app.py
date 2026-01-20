@@ -249,8 +249,7 @@ def watch_movie(movie_id):
     return render_template("404.html"), 404
 
 
-@app.route("/watch/tv/<int:tv_id>/<int:season>/<int:episode>") #  pass the correct tv show  id to the player template , which embed the third party video player vidking 
-def watch_movie(movie_id):
+@app.route("/watch/tv/<int:tv_id>/<int:season>/<int:episode>") #  pass the correct tv show  id to the player template , which embed the third party video player vidking
 def watch_tv(tv_id, season, episode):
     """Render TV player page with VidKing embed"""
     details = fetch_tv_details(tv_id)
