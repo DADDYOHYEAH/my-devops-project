@@ -1,9 +1,12 @@
 
-from flask import Flask, render_template, request, jsonify
+# Flask needs sessions to remember “this user is logged in”.
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 import requests
 import os
 
 app = Flask(__name__)
+# Secret key for session management. Flask signs session cookies using secret_key
+app.secret_key = os.environ.get("SECRET_KEY", "devopsflix-secret")
 
 # TMDB API Configuration
 # Replace with your actual TMDB API key
@@ -15,6 +18,9 @@ TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 # A simple list to store the user's watchlist temporarily
 watchlist = []
 
+USERS = {
+    "admin": "password123"
+}
 
 def fetch_trending_movies():  # this fucntion ensures homepage always show fresh content without us havvng to update it manually or hardcoded into the code itself by hitting external api 
     """Fetch trending movies of the week from TMDB API"""
@@ -167,6 +173,30 @@ def fetch_movie_details(movie_id): # same as above but for movies
         return movie_details
     except requests.RequestException:
         return None
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    # Read username and password from submitted HTML form
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+
+        # If credentials are valid, store username in session and redirect to index
+        if username in USERS and USERS[username] == password:
+            session["user"] = username
+            return redirect(url_for("index"))
+        
+        # If login fails, reload login page with error message
+        return render_template("login.html", error="Invalid credentials")
+    
+    # Render login page on GET request
+    return render_template("login.html")
+
+# Clears user session and logs the user out
+@app.route("/logout")
+def logout():
+    session.pop("user", None) # Removes 'user' from session
+    return redirect(url_for("index")) # Redirects back to homepage
 
 
 @app.route("/") # it gets the trending and top rated dats and also picks the #1 movie for the hero banner image at the top of the homepage anfd sends it all to index.htm; 
