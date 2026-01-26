@@ -1,3 +1,4 @@
+# By Aaron 
 # has two job 
 # job 1 : runs flake8(checks code quality) , runs pip audt (security check ) and pytest (testting)
 # job 2: if job 1 passes , then it builds the docker image and pusehes it to docker hub 
@@ -59,3 +60,6 @@ jobs:
           context: .
           push: true
           tags: ${{ secrets.DOCKER_USERNAME }}/my-app:latest
+
+
+         # aaeibgdhgfhgdhsgd
