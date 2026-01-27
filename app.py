@@ -19,7 +19,7 @@ TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 watchlist = []
 
 USERS = {
-    "admin": "password123"
+    "admin": "123"
 }
 
 def fetch_trending_movies():  # this fucntion ensures homepage always show fresh content without us havvng to update it manually or hardcoded into the code itself by hitting external api 
