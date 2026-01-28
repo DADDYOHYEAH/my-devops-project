@@ -1,5 +1,5 @@
 # This handles Scalability. It automatically adds more pods when traffic gets high.#
-
+# nurinnnnnn
 apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
