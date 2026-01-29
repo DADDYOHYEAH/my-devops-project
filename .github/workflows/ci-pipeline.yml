@@ -49,7 +49,7 @@ jobs:
       - name: Run Automated Tests  
         # QUALITY: Executes the test suite in test_app.py to verify feature functionality. [cite: 11, 36]
         # Only if all tests pass can the code be merged or used further. 
-        run: pytest
+        run: pytest -v 
 
   # JOB 2: Continuous Deployment (Build)
   # This job only runs if the 'test' job passes successfully (the 'needs: test' dependency). 

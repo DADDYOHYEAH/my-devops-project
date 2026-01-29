@@ -321,6 +321,11 @@ def search():
 def get_movie_details(movie_id):
     """Render full movie detail page with Streaming Providers"""
     details = fetch_movie_details(movie_id)
+
+
+    # SAFETY CHECK: Stop here if movie isn't found
+    if not details:
+        return render_template("404.html"), 404
     
     # NEW: Fetch where to watch this movie
     providers = fetch_watch_providers("movie", movie_id, details.get("title"))
