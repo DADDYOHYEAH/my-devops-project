@@ -85,8 +85,12 @@
         const searchInput = document.getElementById('searchInput');
         const searchResults = document.getElementById('searchResults');
         let searchTimeout = null;
+        let latestRequestId = 0; // Track the most recent search request
 
-        // Search as you type - NO DEBOUNCE for instant results
+        // Store the original trending HTML so we can restore it
+        const originalTrendingHTML = searchResults.innerHTML;
+
+        // Search as you type with improved debouncing
         searchInput.addEventListener('input', function () {
             const query = this.value.trim();
 
@@ -95,22 +99,29 @@
             }
 
             if (!query) {
-                // Show trending again if search is cleared
-                location.reload();
+                // Restore original trending section without reloading page
+                searchResults.innerHTML = originalTrendingHTML;
                 return;
             }
 
-            // Very minimal debounce (50ms) for instant feel
+            // Very fast debounce (50ms) - instant results while typing
             searchTimeout = setTimeout(() => {
                 performSearch(query);
             }, 50);
         });
 
         function performSearch(query) {
+            // Increment request ID to track this specific search
+            const requestId = ++latestRequestId;
+
             fetch(`/api/search?q=${encodeURIComponent(query)}`)
                 .then(response => response.json())
                 .then(data => {
-                    displaySearchResults(data.results, data.image_base, query);
+                    // Only display results if this is still the latest search
+                    if (requestId === latestRequestId) {
+                        displaySearchResults(data.results, data.image_base, query);
+                    }
+                    // Otherwise ignore old results (race condition prevented!)
                 })
                 .catch(error => {
                     console.error('Error:', error);
