@@ -4,14 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign In - DevOps Flix</title>
+    <title>Sign Up - DevOps Flix</title>
 
     <!-- Link to external CSS file stored in Flask's static folder -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 
     <style>
         /* =========================================
-       INLINE CSS OVERRIDES FOR LOGIN PAGE
+       INLINE CSS OVERRIDES FOR SIGNUP PAGE
+       (Identical to login page styling)
        ========================================= */
 
         body.login-page {
@@ -136,6 +137,18 @@
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
+        /* Success Message Styling */
+        .success {
+            background: #2ecc71;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            text-align: left;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
         /* Bottom Text */
         .login-footer {
             margin-top: 20px;
@@ -151,6 +164,13 @@
 
         .login-footer a:hover {
             text-decoration: underline;
+        }
+
+        /* Password requirements hint */
+        .password-hint {
+            color: #8c8c8c;
+            font-size: 13px;
+            margin-top: -8px;
         }
 
         /* Mobile Responsiveness */
@@ -178,29 +198,43 @@
 <body class="login-page">
 
     <div class="login-box">
-        <h2>Sign In</h2>
+        <h2>Sign Up</h2>
 
-        <!-- Display error message if login fails -->
+        <!-- Display error message if signup fails -->
         {% if error %}
         <div class="error">{{ error }}</div>
         {% endif %}
 
-        <!-- Login form -->
+        <!-- Display success message if signup succeeds -->
+        {% if success %}
+        <div class="success">{{ success }}</div>
+        {% endif %}
+
+        <!-- Signup form -->
         <form method="POST">
 
-            <!-- Username / Email input field -->
-            <input type="text" name="username" placeholder="Email or Username" required autocomplete="username">
+            <!-- Email input field -->
+            <input type="email" name="email" placeholder="Email" required autocomplete="email">
+
+            <!-- Username input field -->
+            <input type="text" name="username" placeholder="Username" required autocomplete="username">
 
             <!-- Password input field -->
-            <input type="password" name="password" placeholder="Password" required autocomplete="current-password">
+            <input type="password" name="password" placeholder="Password" required autocomplete="new-password">
+
+            <!-- Confirm Password input field -->
+            <input type="password" name="confirm_password" placeholder="Confirm Password" required
+                autocomplete="new-password">
+
+            <p class="password-hint">Password must be at least 4 characters.</p>
 
             <!-- Submit button triggers form submission -->
-            <button type="submit">Sign In</button>
+            <button type="submit">Sign Up</button>
 
         </form>
 
         <div class="login-footer">
-            New to DevOps Flix? <a href="{{ url_for('signup') }}">Sign up now</a>.
+            Already have an account? <a href="{{ url_for('login') }}">Sign in now</a>.
         </div>
     </div>
 

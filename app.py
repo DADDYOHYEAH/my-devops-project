@@ -240,6 +240,38 @@ def logout():
     return redirect(url_for("index")) # Redirects back to homepage
 
 
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    """Handle user registration"""
+    if request.method == "POST":
+        email = request.form.get("email")
+        username = request.form.get("username")
+        password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
+        
+        # Validation checks
+        if not all([email, username, password, confirm_password]):
+            return render_template("signup.html", error="All fields are required")
+        
+        if password != confirm_password:
+            return render_template("signup.html", error="Passwords do not match")
+        
+        if len(password) < 4:
+            return render_template("signup.html", error="Password must be at least 4 characters")
+        
+        if username in USERS:
+            return render_template("signup.html", error="Username already exists")
+        
+        # Add new user to USERS dictionary (in-memory, resets on server restart)
+        USERS[username] = password
+        
+        # Redirect to login page with success message
+        return render_template("signup.html", success="Account created successfully! You can now sign in.")
+    
+    # Render signup page on GET request
+    return render_template("signup.html")
+
+
 @app.route("/") # it gets the trending and top rated dats and also picks the #1 movie for the hero banner image at the top of the homepage anfd sends it all to index.htm; 
 def index():
     """Main page with trending, top rated movies and watchlist"""
