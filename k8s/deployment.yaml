@@ -1,12 +1,9 @@
-# this file manages Availability. It runs 3 copies of the app and uses probes to restart frozen apps automatically."
-# nurinnnnn
-
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: flask-app-deployment
 spec:
-  replicas: 3  # AVAILABILITY: Run 3 replicas so if one crashes, others stay online
+  # REMOVED 'replicas: 3' to let HPA handle scaling
   selector:
     matchLabels:
       app: flask-app
@@ -17,41 +14,34 @@ spec:
     spec:
       containers:
       - name: flask-app
-        # I have already put your username here. Do not add spaces or change indentation.
         image: daddyohyeah/my-app:latest
-        
-        # --- CD FIX: Ensures K8s always pulls the new image on restart ---
         imagePullPolicy: Always 
-        # -----------------------------------------------------------------
-
         ports:
         - containerPort: 5000
 
-        # STABILITY: Limits resource usage to prevent server crashes
+        # RESOURCES: Prevents app from crashing server
         resources:
-          requests:            # <--- ADD THIS BLOCK
-            cpu: "100m"        # 10% of a core (The Baseline)
+          requests:
+            cpu: "100m"
             memory: "128Mi"
           limits:
-            memory: "512Mi"
             cpu: "500m"
+            memory: "512Mi"
         
-        # --- AVAILABILITY FIX: Auto-restarts if app freezes ---
+        # PROBES: Updated to use /health
         livenessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 5000
-          initialDelaySeconds: 60
-          periodSeconds: 30
-          timeoutSeconds: 10        # <--- ADD THIS (Wait 10s for reply, not 1s)
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
           failureThreshold: 3
   
-        # AVAILABILITY: Ensures traffic isn't sent until the app is ready
         readinessProbe:
           httpGet:
-            path: /
+            path: /health
             port: 5000
           initialDelaySeconds: 5
-          periodSeconds: 10
-          timeoutSeconds: 10
-        # ------------------------------------------------------
+          periodSeconds: 5
+          timeoutSeconds: 3
