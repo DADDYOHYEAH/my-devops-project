@@ -8,7 +8,10 @@
 # Stage 1: Build
 FROM python:3.10-slim as builder
 WORKDIR /app
+
+# Seperating dependency install helps caching and repeatable builds
 COPY requirements.txt .
+
 # Install dependencies to a local user directory
 RUN pip install --user -r requirements.txt
 
@@ -38,4 +41,6 @@ USER appuser
 ENV PATH=/home/appuser/.local/bin:$PATH
 
 EXPOSE 5000
+
+# Runs Flask app via python app.py
 CMD ["python", "app.py"]
