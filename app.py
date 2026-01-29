@@ -174,6 +174,47 @@ def fetch_movie_details(movie_id): # same as above but for movies
     except requests.RequestException:
         return None
 
+def fetch_watch_providers(media_type, media_id, title):
+    """Fetch legal streaming providers and generate smart links"""
+    url = f"{TMDB_BASE_URL}/{media_type}/{media_id}/watch/providers"
+    params = {"api_key": TMDB_API_KEY}
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json().get("results", {})
+        
+        country_code = "SG" # Singapore
+        
+        if country_code in data:
+            provider_data = data[country_code]
+            
+            # --- SMART LINK LOGIC ---
+            # We add a custom 'link' to each provider
+            if "flatrate" in provider_data:
+                for provider in provider_data["flatrate"]:
+                    name = provider["provider_name"]
+                    encoded_title = requests.utils.quote(title)
+                    
+                    if "Netflix" in name:
+                        provider["custom_link"] = f"https://www.netflix.com/search?q={encoded_title}"
+                    elif "Amazon" in name or "Prime" in name:
+                        provider["custom_link"] = f"https://www.amazon.com/s?k={encoded_title}&i=instant-video"
+                    elif "Disney" in name:
+                        provider["custom_link"] = f"https://www.disneyplus.com/search?q={encoded_title}"
+                    elif "HBO" in name:
+                        provider["custom_link"] = f"https://www.hbomax.com/search?q={encoded_title}"
+                    elif "YouTube" in name:
+                         provider["custom_link"] = f"https://www.youtube.com/results?search_query={encoded_title}"
+                    else:
+                        # Fallback to Google if we don't know the specific app
+                        provider["custom_link"] = f"https://www.google.com/search?q=watch+{encoded_title}+on+{name}"
+            
+            return provider_data
+            
+        return None
+    except requests.RequestException:
+        return None
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     # Read username and password from submitted HTML form
@@ -239,30 +280,45 @@ def search():
     return jsonify({"results": results, "image_base": TMDB_IMAGE_BASE})
 
 
-@app.route("/movie/<int:movie_id>") # loads the deutial page for specific m0vie or tv show . so capture id from url feed the relevant detils and then render movie_detail.html page 
+@app.route("/movie/<int:movie_id>")
 def get_movie_details(movie_id):
-    """Render full movie detail page"""
+    """Render full movie detail page with Streaming Providers"""
     details = fetch_movie_details(movie_id)
+    
+    # NEW: Fetch where to watch this movie
+    providers = fetch_watch_providers("movie", movie_id, details.get("title"))
+    
     if details:
         return render_template(
             "movie_detail.html",
             movie=details,
+            providers=providers,  # <--- Pass the new data to HTML
             image_base=TMDB_IMAGE_BASE
         )
     return render_template("404.html"), 404
 
 
-@app.route("/tv/<int:tv_id>") # loads the deutial page for specific m0vie or tv show . so capture id from url feed the relevant detils and then render movie_detail.html page 
+@app.route("/tv/<int:tv_id>")
 def get_tv_details(tv_id):
-    """Render full TV series detail page"""
+    """Render full TV Show detail page"""
     details = fetch_tv_details(tv_id)
-    if details:
-        return render_template(
-            "movie_detail.html",
-            movie=details,
-            image_base=TMDB_IMAGE_BASE
-        )
-    return render_template("404.html"), 404
+    
+    # FIX 1: Safety Check - If TV show isn't found, stop here (Prevents 500 Error)
+    if not details:
+        return render_template("404.html"), 404
+
+    # FIX 2: TV Shows use "name", Movies use "title". This handles both.
+    tv_title = details.get("name", details.get("title"))
+    
+    # Now it is safe to fetch providers
+    providers = fetch_watch_providers("tv", tv_id, tv_title)
+    
+    return render_template(
+        "movie_detail.html",
+        movie=details,
+        providers=providers,
+        image_base=TMDB_IMAGE_BASE
+    )
 
 
 @app.route("/watch/movie/<int:movie_id>")  # pass the correct movie id to the player template , which embed the third party video player vidking 

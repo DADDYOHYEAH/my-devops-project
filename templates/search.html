@@ -57,7 +57,8 @@
                     </div>
                     <div class="search-results-grid">
                         {% for movie in trending %}
-                        <div class="search-result-card" onclick="window.location.href='/?movie={{ movie.id }}'">
+                        <div class="search-result-card"
+                            onclick="openMovieModal({{ movie.id }}, '{{ movie.media_type }}')">
                             <div class="search-result-card-poster">
                                 {% if movie.poster_path %}
                                 <img src="{{ image_base }}{{ movie.poster_path }}" alt="{{ movie.title }}"

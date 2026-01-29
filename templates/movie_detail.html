@@ -76,31 +76,37 @@
             <!-- Overview -->
             <p class="detail-overview">{{ movie.overview }}</p>
 
-            <!-- Action Buttons -->
             <div class="detail-actions">
-                {% if movie.media_type == 'tv' or movie.number_of_seasons %}
-                <a href="/watch/tv/{{ movie.id }}/1/1" class="detail-btn detail-btn-play">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                        <path d="M8 5v14l11-7z" />
-                    </svg>
-                    Play
-                </a>
+
+                {% if providers and providers.flatrate %}
+                <div class="streaming-section" style="margin-bottom: 20px; width: 100%;">
+                    <h3 style="font-size: 1rem; color: #aaa; margin-bottom: 10px;">Stream Legally on:</h3>
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        {% for provider in providers.flatrate %}
+                        <a href="{{ provider.custom_link }}" target="_blank"
+                            style="text-decoration: none; text-align: center; color: white;">
+                            <img src="{{ image_base }}{{ provider.logo_path }}" alt="{{ provider.provider_name }}"
+                                style="width: 50px; height: 50px; border-radius: 12px; margin-bottom: 5px; box-shadow: 0 4px 8px rgba(0,0,0,0.5); transition: transform 0.2s;">
+                            <div style="font-size: 0.75rem; color: #ccc;">{{ provider.provider_name }}</div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
                 {% else %}
-                <a href="/watch/movie/{{ movie.id }}" class="detail-btn detail-btn-play">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
-                        <path d="M8 5v14l11-7z" />
-                    </svg>
-                    Play
-                </a>
+                <div style="margin-bottom: 20px;">
+                    <button class="detail-btn detail-btn-secondary" disabled style="opacity: 0.6; cursor: not-allowed;">
+                        Not available to stream
+                    </button>
+                </div>
                 {% endif %}
+
                 <button class="detail-btn detail-btn-add" onclick="addToWatchlistFromDetail()">
                     <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
                         <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" />
                     </svg>
+                    My List
                 </button>
-                {% if movie.media_type == 'tv' or movie.number_of_seasons %}
-                <button class="detail-btn detail-btn-secondary">Episodes</button>
-                {% endif %}
+
                 <button class="detail-btn detail-btn-secondary">Similars</button>
             </div>
 

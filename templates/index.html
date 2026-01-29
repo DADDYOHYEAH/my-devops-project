@@ -289,7 +289,7 @@
                         </svg>
                         Play
                     </button>
-                    <button class="btn btn-info" onclick="openMovieModal({{ movie.id }})">
+                    <button class="btn btn-info" onclick="openMovieModal({{ movie.id }}, '{{ movie.media_type }}')">
                         <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
                             <path
                                 d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
@@ -338,7 +338,8 @@
             <div class="carousel-container">
                 <div class="movie-carousel" id="trending-carousel">
                     {% for movie in trending %}
-                    <div class="movie-card" data-id="{{ movie.id }}" onclick="openMovieModal({{ movie.id }})">
+                    <div class="movie-card" data-id="{{ movie.id }}"
+                        onclick="openMovieModal({{ movie.id }}, '{{ movie.media_type }}')">
                         <div class="movie-poster">
                             {% if movie.poster_path %}
                             <img src="{{ image_base }}{{ movie.poster_path }}" alt="{{ movie.title }}" loading="lazy">
@@ -640,9 +641,13 @@
         const modalClose = document.getElementById('modalClose');
         let currentMovieData = null;
 
-        function openMovieModal(movieId) {
-            // Navigate to the full detail page
-            window.location.href = `/movie/${movieId}`;
+        function openMovieModal(movieId, mediaType) {
+            // Navigate to the correct page based on type
+            if (mediaType === 'tv') {
+                window.location.href = `/tv/${movieId}`;
+            } else {
+                window.location.href = `/movie/${movieId}`;
+            }
         }
 
         function displayMovieModal(movie, imageBase) {
