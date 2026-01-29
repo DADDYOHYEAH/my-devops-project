@@ -1,4 +1,5 @@
 # this file manages Availability. It runs 3 copies of the app and uses probes to restart frozen apps automatically."
+# nurinnnnn
 
 apiVersion: apps/v1
 kind: Deployment
