@@ -7,6 +7,6 @@ spec:
     app: flask-app
   ports:
     - protocol: TCP
-      port: 80
-      targetPort: 5000
+      port: 80 # Clients access the service using port 80 (standard HTTP)
+      targetPort: 5000 # This forwards traffic to the Flask container port (5000)
   type: LoadBalancer # Demonstrates Availability by distributing traffic
