@@ -1,0 +1,20 @@
+# Git files
+.git
+.gitignore
+.github
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+
+# Environment
+.env
+venv/
+env/
+
+# K8s files (not needed inside container)
+k8s/
+README.md
