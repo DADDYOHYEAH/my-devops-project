@@ -22,6 +22,11 @@ USERS = {
     "admin": "123"
 }
 
+@app.route("/health")
+def health_check():
+    """Simple health check for Kubernetes probes"""
+    return jsonify({"status": "healthy"}), 200
+
 def fetch_trending_movies():  # this fucntion ensures homepage always show fresh content without us havvng to update it manually or hardcoded into the code itself by hitting external api 
     """Fetch trending movies of the week from TMDB API"""
     url = f"{TMDB_BASE_URL}/trending/movie/week"
