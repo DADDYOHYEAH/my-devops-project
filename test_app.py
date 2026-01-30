@@ -222,3 +222,93 @@ class TestDevOpsFlixComprehensiveFeatureTests:
             data = response.get_json()
             assert "results" in data
             assert len(data["results"]) == 1
+
+    def test_login_valid_user(self, client):
+        """Test that login with valid credentials works and redirects to homepage"""
+        login_data = {
+            "username": "admin",
+            "password": "123"
+        }
+        response = client.post("/login", data=login_data, follow_redirects=True)
+        assert response.status_code == 200
+        assert b"Trending" in response.data
+
+    def test_login_invalid_user(self, client):
+        """Test that login with invalid credentials shows error message"""
+        login_data = {
+            "username": "admin",
+            "password": "wrongpassword"
+        }
+        response = client.post("/login", data=login_data, follow_redirects=True)
+        assert response.status_code == 200
+        assert b"Invalid credentials" in response.data
+
+    def test_login_no_credentials(self, client):
+        """Test that submitting empty credentials returns an error message"""
+        login_data = {
+            "username": "",
+            "password": ""
+        }
+        response = client.post("/login", data=login_data, follow_redirects=True)
+        assert response.status_code == 200
+        assert b"Invalid credentials" in response.data
+
+    def test_get_movie_details(self, client):
+        """Test the movie detail page with streaming providers"""
+        mock_movie_data = {
+            "id": 12345,
+            "title": "Mock Movie 1",
+            "overview": "This is a mock movie overview",
+            "poster_path": "/mock_poster.jpg",
+            "backdrop_path": "/mock_backdrop.jpg",
+            "vote_average": 8.5,
+            "release_date": "2024-01-15",
+            "runtime": 120,
+            "genres": [{"name": "Action"}, {"name": "Adventure"}],
+            "credits": {"cast": [], "crew": []},
+            "videos": {"results": []},
+            "tagline": "Test tagline",
+            "status": "Released",
+            "budget": 100000000,
+            "revenue": 500000000,
+            "vote_count": 1000
+        }
+
+        # Mock streaming provider data
+        mock_providers = {
+            "results": {
+                "SG": {
+                    "flatrate": [
+                        {"provider_name": "Netflix", "logo_path": "/netflix_logo.jpg"},
+                        {"provider_name": "Amazon", "logo_path": "/amazon_logo.jpg"}
+                    ]
+                }
+            }
+        }
+
+        # Mock the TMDB API call for movie details and watch providers
+        def mock_get(url, params=None, timeout=None):
+            mock_response = MagicMock()
+            mock_response.raise_for_status = MagicMock()
+
+            if "watch/providers" in url:
+                mock_response.json.return_value = mock_providers
+            elif "movie" in url:
+                mock_response.json.return_value = mock_movie_data
+
+            return mock_response
+
+        with patch("app.requests.get", side_effect=mock_get):
+            response = client.get("/movie/12345")
+
+            # Assert the status code is 200 (successful page load)
+            assert response.status_code == 200
+
+            # Assert that Netflix is in the response data (streaming provider)
+            assert b"Netflix" in response.data
+
+            # Assert that Amazon is in the response data (streaming provider)
+            assert b"Amazon" in response.data
+
+            # Assert that the section containing the streaming providers is present
+            assert b"Stream Legally on:" in response.data
