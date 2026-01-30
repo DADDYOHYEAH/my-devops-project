@@ -34,6 +34,7 @@ Thumbs.db
 # Local development
 *.sqlite3
 *.db
+devopsflix.db
 
 # IDE and Extensions
 .qodo/
