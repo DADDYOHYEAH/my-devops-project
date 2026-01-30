@@ -5,9 +5,20 @@ from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
 import requests
 import os
+import logging
 
 # Load environment variables from .env file
 load_dotenv()
+
+# ============================================================
+# LOGGING CONFIGURATION - DevOps best practice for monitoring
+# ============================================================
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 # Secret key for session management. Flask signs session cookies using secret_key
@@ -245,9 +256,11 @@ def login():
         # If credentials are valid, store username in session and redirect to index
         if username in USERS and USERS[username] == password:
             session["user"] = username
+            logger.info(f"LOGIN SUCCESS: User '{username}' logged in from {request.remote_addr}")
             return redirect(url_for("index"))
         
         # If login fails, reload login page with error message
+        logger.warning(f"LOGIN FAILED: Invalid credentials for user '{username}' from {request.remote_addr}")
         return render_template("login.html", error="Invalid credentials")
     
     # Render login page on GET request
@@ -329,6 +342,8 @@ def search():
     query = request.args.get("q", "")
     if not query:
         return jsonify({"results": []})
+    
+    logger.info(f"SEARCH: User searched for '{query}' from {request.remote_addr}")
     
     results = search_multi(query)
     return jsonify({"results": results, "image_base": TMDB_IMAGE_BASE})
@@ -456,6 +471,7 @@ def add_to_watchlist():
         "poster_path": poster_path
     }
     watchlist.append(movie_entry)
+    logger.info(f"WATCHLIST ADD: Movie '{title}' (ID: {movie_id}) added from {request.remote_addr}")
     
     return jsonify({"success": True, "message": "Movie added to watchlist", "watchlist": watchlist})
 
