@@ -1,0 +1,44 @@
+services:
+  # Flask Web Application
+  - type: web
+    name: devopsflix-app
+    env: docker
+    plan: free
+    # Use gunicorn production server (4 worker processes)
+    dockerCommand: gunicorn -w 4 -b 0.0.0.0:$PORT app:app
+    envVars:
+      # Flask Configuration
+      - key: SECRET_KEY
+        generateValue: true  # Render auto-generates secure key
+      
+      # TMDB API Key (you'll paste this manually in Render dashboard)
+      - key: TMDB_API_KEY
+        sync: false
+      
+      # Database Connection (mapped from Render's managed PostgreSQL)
+      - key: DB_HOST
+        fromDatabase:
+          name: devopsflix-db
+          property: host
+      
+      - key: DB_USER
+        fromDatabase:
+          name: devopsflix-db
+          property: user
+      
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: devopsflix-db
+          property: password
+      
+      - key: DB_NAME
+        fromDatabase:
+          name: devopsflix-db
+          property: database
+
+databases:
+  # Managed PostgreSQL Database
+  - name: devopsflix-db
+    plan: free
+    databaseName: devopsflix
+    user: devopsflix
