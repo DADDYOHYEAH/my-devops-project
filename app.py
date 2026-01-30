@@ -2,8 +2,12 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from dotenv import load_dotenv
 import requests
 import os
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 # Secret key for session management. Flask signs session cookies using secret_key
@@ -19,8 +23,8 @@ limiter = Limiter(
 )
 
 # TMDB API Configuration
-# Replace with your actual TMDB API key
-TMDB_API_KEY = "c98a3689e4042e45c726454885e21739"
+# API key loaded from environment variable with fallback for team development
+TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "c98a3689e4042e45c726454885e21739")
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 
