@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: flask-app-deployment
 spec:
-  # REMOVED 'replicas: 3' to let HPA handle scaling
+  replicas: 3  # PostgreSQL supports multiple writers
   selector:
     matchLabels:
       app: flask-app
@@ -27,6 +27,18 @@ spec:
           limits:
             cpu: "500m"
             memory: "512Mi"
+        
+        # DATABASE CONNECTION
+        env:
+        - name: DB_HOST
+          value: "postgres-service"
+        - name: DB_USER
+          value: "devopsflix"
+        - name: DB_PASSWORD
+          value: "devopsflix123"
+        - name: DB_NAME
+          value: "devopsflix"
+        
         
         # PROBES: Updated to use /health
         livenessProbe:

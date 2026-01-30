@@ -1,67 +1,164 @@
 """
 Database module for DevOps Flix
-Handles SQLite database operations for users and watchlist persistence.
+Supports dual-mode operation:
+- Local mode: SQLite (when DB_HOST not set)
+- Production mode: PostgreSQL (when DB_HOST is set)
 """
-import sqlite3
 import os
 import logging
 
 logger = logging.getLogger(__name__)
 
-# Get database path from environment variable with fallback
-DB_PATH = os.environ.get("DB_PATH", "devopsflix.db")
+# Database configuration from environment variables
+DB_HOST = os.environ.get("DB_HOST")  # If set, use PostgreSQL
+DB_USER = os.environ.get("DB_USER", "devopsflix")
+DB_PASSWORD = os.environ.get("DB_PASSWORD", "devopsflix123")
+DB_NAME = os.environ.get("DB_NAME", "devopsflix")
+DB_PATH = os.environ.get("DB_PATH", "devopsflix.db")  # SQLite path
+
+# Determine database mode
+USE_POSTGRES = DB_HOST is not None
+
+if USE_POSTGRES:
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    logger.info(f"Database Mode: PostgreSQL (Host: {DB_HOST})")
+else:
+    import sqlite3
+    logger.info(f"Database Mode: SQLite (Path: {DB_PATH})")
 
 
 def get_db_connection():
-    """Create and return a database connection."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row  # Enable column access by name
-    return conn
+    """Create and return a database connection based on environment."""
+    if USE_POSTGRES:
+        conn = psycopg2.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME,
+            cursor_factory=RealDictCursor
+        )
+        return conn
+    else:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row  # Enable column access by name
+        return conn
 
 
-def init_db():
-    """Initialize the database with required tables."""
-    logger.info(f"Initializing database at: {DB_PATH}")
+def execute_query(query, params=None, fetch=None):
+    """
+    Execute a database query with automatic placeholder conversion.
+    Args:
+        query: SQL query string (use ? for placeholders)
+        params: Tuple of parameters
+        fetch: 'one', 'all', or None (for INSERT/UPDATE/DELETE)
+    Returns:
+        Result of fetch operation or lastrowid/rowcount
+    """
+    # Convert SQLite placeholders (?) to PostgreSQL placeholders (%s)
+    if USE_POSTGRES and params:
+        query = query.replace("?", "%s")
     
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Create Users table
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT NOT NULL,
-            password TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+    try:
+        if params:
+            cursor.execute(query, params)
+        else:
+            cursor.execute(query)
+        
+        result = None
+        if fetch == 'one':
+            result = cursor.fetchone()
+        elif fetch == 'all':
+            result = cursor.fetchall()
+        elif fetch is None:
+            # For INSERT/UPDATE/DELETE
+            conn.commit()
+            if USE_POSTGRES:
+                result = cursor.rowcount
+            else:
+                result = cursor.lastrowid or cursor.rowcount
+        
+        conn.close()
+        return result
     
-    # Create Watchlist table with user_id foreign key
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS watchlist (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            movie_id INTEGER NOT NULL,
-            title TEXT NOT NULL,
-            poster_path TEXT,
-            added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (user_id) REFERENCES users (id),
-            UNIQUE(user_id, movie_id)
-        )
-    ''')
+    except Exception as e:
+        conn.close()
+        logger.error(f"Database error: {e}")
+        raise
+
+
+def init_db():
+    """Initialize the database with required tables."""
+    logger.info("Initializing database...")
+    
+    # SQL compatible with both SQLite and PostgreSQL
+    if USE_POSTGRES:
+        users_table = '''
+            CREATE TABLE IF NOT EXISTS users (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(255) UNIQUE NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        '''
+        
+        watchlist_table = '''
+            CREATE TABLE IF NOT EXISTS watchlist (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                movie_id INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                poster_path TEXT,
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id),
+                UNIQUE(user_id, movie_id)
+            )
+        '''
+    else:
+        users_table = '''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                email TEXT NOT NULL,
+                password TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        '''
+        
+        watchlist_table = '''
+            CREATE TABLE IF NOT EXISTS watchlist (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                movie_id INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                poster_path TEXT,
+                added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id),
+                UNIQUE(user_id, movie_id)
+            )
+        '''
+    
+    execute_query(users_table)
+    execute_query(watchlist_table)
     
     # Seed default admin user if not exists
-    cursor.execute("SELECT id FROM users WHERE username = 'admin'")
-    if cursor.fetchone() is None:
-        cursor.execute(
+    admin_exists = execute_query(
+        "SELECT id FROM users WHERE username = ?",
+        ("admin",),
+        fetch='one'
+    )
+    
+    if not admin_exists:
+        execute_query(
             "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
             ("admin", "admin@devopsflix.com", "123")
         )
         logger.info("Default admin user created")
     
-    conn.commit()
-    conn.close()
     logger.info("Database initialized successfully")
 
 
@@ -71,11 +168,11 @@ def init_db():
 
 def get_user(username):
     """Get user by username. Returns dict or None."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE username = ?", (username,))
-    row = cursor.fetchone()
-    conn.close()
+    row = execute_query(
+        "SELECT * FROM users WHERE username = ?",
+        (username,),
+        fetch='one'
+    )
     
     if row:
         return {
@@ -90,30 +187,42 @@ def get_user(username):
 def create_user(username, email, password):
     """Create a new user. Returns user_id or None if failed."""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
-            (username, email, password)
-        )
-        user_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
+        if USE_POSTGRES:
+            # PostgreSQL: Use RETURNING to get the new ID
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO users (username, email, password) VALUES (%s, %s, %s) RETURNING id",
+                (username, email, password)
+            )
+            user_id = cursor.fetchone()['id']
+            conn.commit()
+            conn.close()
+        else:
+            # SQLite: Use lastrowid
+            user_id = execute_query(
+                "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
+                (username, email, password)
+            )
+        
         logger.info(f"USER CREATED: {username} (ID: {user_id})")
         return user_id
-    except sqlite3.IntegrityError:
-        logger.warning(f"USER CREATE FAILED: Username '{username}' already exists")
-        return None
+    
+    except Exception as e:
+        if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+            logger.warning(f"USER CREATE FAILED: Username '{username}' already exists")
+            return None
+        raise
 
 
 def check_user_exists(username):
     """Check if username already exists."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
-    exists = cursor.fetchone() is not None
-    conn.close()
-    return exists
+    result = execute_query(
+        "SELECT id FROM users WHERE username = ?",
+        (username,),
+        fetch='one'
+    )
+    return result is not None
 
 
 # ============================================================
@@ -123,33 +232,27 @@ def check_user_exists(username):
 def add_to_watchlist(user_id, movie_id, title, poster_path):
     """Add movie to user's watchlist. Returns True if successful."""
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
+        execute_query(
             "INSERT INTO watchlist (user_id, movie_id, title, poster_path) VALUES (?, ?, ?, ?)",
             (user_id, movie_id, title, poster_path)
         )
-        conn.commit()
-        conn.close()
         logger.info(f"WATCHLIST ADD: Movie '{title}' added for user_id {user_id}")
         return True
-    except sqlite3.IntegrityError:
-        logger.warning(f"WATCHLIST ADD FAILED: Movie already in watchlist")
-        return False
+    except Exception as e:
+        if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+            logger.warning(f"WATCHLIST ADD FAILED: Movie already in watchlist")
+            return False
+        raise
 
 
 def remove_from_watchlist(user_id, movie_id):
     """Remove movie from user's watchlist. Returns True if movie was removed."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
+    rowcount = execute_query(
         "DELETE FROM watchlist WHERE user_id = ? AND movie_id = ?",
         (user_id, movie_id)
     )
-    removed = cursor.rowcount > 0
-    conn.commit()
-    conn.close()
     
+    removed = rowcount > 0
     if removed:
         logger.info(f"WATCHLIST REMOVE: Movie {movie_id} removed for user_id {user_id}")
     return removed
@@ -157,14 +260,11 @@ def remove_from_watchlist(user_id, movie_id):
 
 def get_user_watchlist(user_id):
     """Get all movies in user's watchlist."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
+    rows = execute_query(
         "SELECT movie_id, title, poster_path FROM watchlist WHERE user_id = ? ORDER BY added_at DESC",
-        (user_id,)
+        (user_id,),
+        fetch='all'
     )
-    rows = cursor.fetchall()
-    conn.close()
     
     return [
         {
@@ -172,18 +272,15 @@ def get_user_watchlist(user_id):
             "title": row["title"],
             "poster_path": row["poster_path"]
         }
-        for row in rows
+        for row in (rows or [])
     ]
 
 
 def is_in_watchlist(user_id, movie_id):
     """Check if movie is already in user's watchlist."""
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(
+    result = execute_query(
         "SELECT id FROM watchlist WHERE user_id = ? AND movie_id = ?",
-        (user_id, movie_id)
+        (user_id, movie_id),
+        fetch='one'
     )
-    exists = cursor.fetchone() is not None
-    conn.close()
-    return exists
+    return result is not None
