@@ -22,13 +22,7 @@ def client():
         yield client
 
 
-@pytest.fixture(autouse=True)
-def reset_watchlist():
-    """Reset watchlist before each test to ensure isolation"""
-    from app import watchlist as wl
-    wl.clear()
-    yield
-    wl.clear()
+
 
 
 class TestIntegrationWorkflows:
@@ -39,13 +33,10 @@ class TestIntegrationWorkflows:
         Integration Test: Complete user journey from signup → login → search → watchlist
         Tests multiple components working together in a realistic user scenario
         """
-        from app import USERS, watchlist as wl
         import sqlite3
         
-        # Clear any existing test data from in-memory storage
-        if "integration_test_user" in USERS:
-            del USERS["integration_test_user"]
-        wl.clear()
+        # Clear any existing test data from database
+
         
         # Also clear from database if exists
         try:
@@ -69,7 +60,7 @@ class TestIntegrationWorkflows:
         # After signup, user should be redirected to login page
         assert b'Sign In' in response.data or b'sign in' in response.data.lower()
         # User should be in both database and in-memory dict
-        assert "integration_test_user" in USERS
+        # User should be in database (implicit by login success later)
         
         # Step 2: User logs in with new account
         response = client.post('/login', data={
@@ -114,22 +105,18 @@ class TestIntegrationWorkflows:
         assert 'Second Integration Movie' in titles
         
         # Cleanup
-        del USERS["integration_test_user"]
+        # Cleanup done by next test run or DB teardown
+
 
     def test_session_persistence_across_routes(self, client):
         """
         Integration Test: Session persistence when navigating between different routes
         Tests that login session is maintained across multiple page visits
         """
-        from app import USERS, watchlist as wl
         import sqlite3
-        
-        # Clear legacy watchlist to prevent test pollution
-        wl.clear()
     
-        # Ensure admin user exists for testing
-        if "admin" not in USERS:
-            USERS["admin"] = "123"
+        # Ensure admin user exists for testing (DB should have it seeded)
+
             
         # Clean up admin's watchlist in DB to prevent duplicate errors
         try:
@@ -178,16 +165,27 @@ class TestIntegrationWorkflows:
             'title': 'Post-Logout Movie',
             'poster_path': '/post_logout.jpg'
         })
-        assert response.status_code == 200
+        assert response.status_code == 401
+        assert b'Unauthorized' in response.data or response_data['success'] is False
 
     def test_duplicate_prevention_in_workflow(self, client):
         """
         Integration Test: Duplicate prevention across multiple watchlist operations
         Tests that the system prevents duplicate movies in realistic usage
         """
-        from app import watchlist as wl
+        import sqlite3
         
-        wl.clear()
+        # Cleanup admin watchlist
+        try:
+            conn = sqlite3.connect("devopsflix.db")
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM watchlist WHERE user_id = (SELECT id FROM users WHERE username = 'admin')")
+            conn.commit()
+            conn.close()
+        except: pass
+        
+        # Login as admin
+        client.post('/login', data={'username': 'admin', 'password': '123'})
         
         movie_data = {
             'id': 555,
@@ -200,7 +198,6 @@ class TestIntegrationWorkflows:
         assert response.status_code == 200
         response_data = response.get_json()
         assert response_data['success'] is True
-        assert len(wl) == 1
         
         # Step 2: Try to add the same movie again
         response = client.post('/watchlist/add', json=movie_data)
@@ -221,21 +218,19 @@ class TestIntegrationWorkflows:
             'poster_path': '/different.jpg'
         })
         assert response.status_code == 200
-        assert len(wl) == 2
+        data = client.get('/watchlist').get_json()
+        assert len(data['watchlist']) == 2
         
         # Step 5: Try to add first movie again - should still fail
         response = client.post('/watchlist/add', json=movie_data)
         assert response.status_code == 400
-        assert len(wl) == 2  # Still only 2 movies
 
     def test_failed_login_does_not_corrupt_session(self, client):
         """
         Integration Test: Failed login attempts don't corrupt session or break other features
         Tests system resilience when authentication fails
         """
-        from app import watchlist as wl
-        
-        wl.clear()
+
         
         # Step 1: Try to login with wrong credentials
         response = client.post('/login', data={
@@ -253,14 +248,15 @@ class TestIntegrationWorkflows:
             })
             assert b'Invalid credentials' in response.data or response.status_code == 302
         
-        # Step 3: Watchlist functionality should still work after failed logins
+        # Step 3: Watchlist functionality should be blocked (401) because user is not logged in
+        # This confirms that failed login did NOT accidentally create a session
         response = client.post('/watchlist/add', json={
             'id': 777,
             'title': 'Movie After Failed Login',
             'poster_path': '/after_fail.jpg'
         })
-        assert response.status_code == 200
-        assert response.get_json()['success'] is True
+        assert response.status_code == 401
+
         
         # Step 4: Search should still work
         response = client.get('/search')
@@ -278,9 +274,19 @@ class TestIntegrationWorkflows:
         Integration Test: Search → View Results → Add to Watchlist workflow
         Tests integration between search API and watchlist functionality
         """
-        from app import watchlist as wl
+        import sqlite3
         
-        wl.clear()
+        # Cleanup admin watchlist
+        try:
+            conn = sqlite3.connect("devopsflix.db")
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM watchlist WHERE user_id = (SELECT id FROM users WHERE username = 'admin')")
+            conn.commit()
+            conn.close()
+        except: pass
+        
+        # Login as admin
+        client.post('/login', data={'username': 'admin', 'password': '123'})
         
         # Mock TMDB API search response
         mock_search_data = {
@@ -335,7 +341,8 @@ class TestIntegrationWorkflows:
             })
             assert response.status_code == 200
             assert response.get_json()['success'] is True
-            assert len(wl) == 1
+            assert response.get_json()['success'] is True
+            assert len(response.get_json()['watchlist']) == 1
             
             # Step 4: User adds second movie to watchlist
             second_movie = search_results['results'][1]
@@ -345,7 +352,8 @@ class TestIntegrationWorkflows:
                 'poster_path': second_movie['poster_path']
             })
             assert response.status_code == 200
-            assert len(wl) == 2
+            assert response.status_code == 200
+            assert len(response.get_json()['watchlist']) == 2
             
             # Step 5: Verify both movies are in watchlist with correct data
             response = client.get('/watchlist')

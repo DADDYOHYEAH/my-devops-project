@@ -48,13 +48,7 @@ TMDB_API_KEY = os.environ.get("TMDB_API_KEY", "c98a3689e4042e45c726454885e21739"
 TMDB_BASE_URL = "https://api.themoviedb.org/3"
 TMDB_IMAGE_BASE = "https://image.tmdb.org/t/p/w500"
 
-# In-memory watchlist storage   / temporary database to store the movie watchlist 
-# A simple list to store the user's watchlist temporarily
-watchlist = []
 
-USERS = {
-    "admin": "123"
-}
 
 # ============================================================
 # DATABASE INITIALIZATION
@@ -283,11 +277,6 @@ def login():
             session["user_id"] = db_user["id"]  # Store user_id for watchlist
             logger.info(f"LOGIN SUCCESS: User '{username}' (ID: {db_user['id']}) logged in from {request.remote_addr}")
             return redirect(url_for("index"))
-        elif username in USERS and USERS[username] == password:
-            # Fallback to in-memory dict (for legacy compatibility)
-            session["user"] = username
-            logger.info(f"LOGIN SUCCESS (legacy): User '{username}' logged in from {request.remote_addr}")
-            return redirect(url_for("index"))
         
         # If login fails, reload login page with error message
         logger.warning(f"LOGIN FAILED: Invalid credentials for user '{username}' from {request.remote_addr}")
@@ -338,8 +327,6 @@ def signup():
         user_id = create_user(username, email, password)
         
         if user_id:
-            # Also update legacy in-memory dict for compatibility during migration
-            USERS[username] = password
             logger.info(f"SIGNUP SUCCESS: User '{username}' created with ID {user_id}")
             
             # Redirect to login page with success message
@@ -362,11 +349,15 @@ def index():
     # Select a featured movie for the hero banner (first trending movie)
     hero_movie = trending[0] if trending else None
     
+    # Get watchlist for logged-in user
+    user_id = session.get("user_id")
+    user_watchlist = get_user_watchlist(user_id) if user_id else []
+    
     return render_template(
         "index.html",
         trending=trending,
         top_rated=top_rated,
-        watchlist=watchlist,
+        watchlist=user_watchlist,
         hero_movie=hero_movie,
         image_base=TMDB_IMAGE_BASE
     )
@@ -528,15 +519,7 @@ def add_to_watchlist():
         else:
             return jsonify({"success": False, "message": "Failed to add movie"}), 500
     else:
-        # Legacy mode: Use in-memory list for guests
-        for movie in watchlist:
-            if movie["id"] == movie_id:
-                return jsonify({"success": False, "message": "Movie already in watchlist"}), 400
-        
-        movie_entry = {"id": movie_id, "title": title, "poster_path": poster_path}
-        watchlist.append(movie_entry)
-        logger.info(f"WATCHLIST ADD (guest): Movie '{title}' (ID: {movie_id}) added from {request.remote_addr}")
-        return jsonify({"success": True, "message": "Movie added to watchlist", "watchlist": watchlist})
+        return jsonify({"success": False, "message": "Unauthorized - Please log in"}), 401
 
 
 @app.route("/watchlist/remove", methods=["POST"])  # removes a movie form watchlist . if id isnt ffound it returns 404 error
@@ -563,31 +546,19 @@ def remove_from_watchlist():
         else:
             return jsonify({"success": False, "message": "Movie not found in watchlist"}), 404
     else:
-        # Legacy mode: Use in-memory list for guests
-        original_length = len(watchlist)
-        for i, movie in enumerate(watchlist):
-            if movie["id"] == movie_id:
-                watchlist.pop(i)
-                break
-        
-        if len(watchlist) == original_length:
-            return jsonify({"success": False, "message": "Movie not found in watchlist"}), 404
-        
-        return jsonify({"success": True, "message": "Movie removed from watchlist", "watchlist": watchlist})
+        return jsonify({"success": False, "message": "Unauthorized - Please log in"}), 401
 
 
 @app.route("/watchlist")  # allows rhe full list as json data .
 def get_watchlist():
     """Get current watchlist"""
     user_id = session.get("user_id")
-    
     if user_id:
         # Database mode: Get user's personal watchlist
         user_watchlist = get_user_watchlist(user_id)
         return jsonify({"watchlist": user_watchlist})
     else:
-        # Legacy mode: Return in-memory list
-        return jsonify({"watchlist": watchlist})
+        return jsonify({"watchlist": []})
 
 
 # ============================================================

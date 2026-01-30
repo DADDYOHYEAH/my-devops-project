@@ -22,13 +22,7 @@ def client():
         yield client
 
 
-@pytest.fixture(autouse=True)
-def reset_watchlist():
-    """Reset watchlist before each test to ensure isolation"""
-    from app import watchlist as wl
-    wl.clear()
-    yield
-    wl.clear()
+
 
 
 class TestDevOpsFlixComprehensiveFeatureTests:
@@ -97,10 +91,11 @@ class TestDevOpsFlixComprehensiveFeatureTests:
             assert b"Top Rated" in response.data
 
     def test_should_add_movie_to_watchlist(self, client):
-        """Add a dummy movie to watchlist and verify the list length increases"""
-        from app import watchlist as wl
-
-        assert len(wl) == 0
+        """Add a dummy movie to watchlist and verify response"""
+        # Mock session to simulate logged-in user
+        with client.session_transaction() as sess:
+            sess["user_id"] = 1
+            sess["user"] = "testuser"
 
         movie_data = {
             "id": 99999,
@@ -108,54 +103,53 @@ class TestDevOpsFlixComprehensiveFeatureTests:
             "poster_path": "/test_poster.jpg",
         }
 
-        response = client.post(
-            "/watchlist/add",
-            json=movie_data,
-            content_type="application/json",
-        )
+        # Mock database functions
+        with patch("app.is_in_watchlist", return_value=False), \
+             patch("app.db_add_to_watchlist", return_value=True), \
+             patch("app.get_user_watchlist", return_value=[movie_data]):
 
-        assert response.status_code == 200
+            response = client.post(
+                "/watchlist/add",
+                json=movie_data,
+                content_type="application/json",
+            )
 
-        response_data = response.get_json()
-        assert response_data["success"] is True
-        assert response_data["message"] == "Movie added to watchlist"
-        assert len(wl) == 1
-        assert wl[0]["id"] == 99999
+            assert response.status_code == 200
+
+            response_data = response.get_json()
+            assert response_data["success"] is True
+            assert response_data["message"] == "Movie added to watchlist"
+            assert len(response_data["watchlist"]) == 1
+            assert response_data["watchlist"][0]["id"] == 99999
 
     def test_should_remove_movie_from_watchlist(self, client):
-        """Add a movie, then remove it, and verify the watchlist is empty"""
-        from app import watchlist as wl
+        """Remove a movie and verify success"""
+        # Mock session to simulate logged-in user
+        with client.session_transaction() as sess:
+            sess["user_id"] = 1
 
-        movie_data = {
-            "id": 88888,
-            "title": "Movie to Remove",
-            "poster_path": "/remove_poster.jpg",
-        }
+        # Mock database functions
+        with patch("app.db_remove_from_watchlist", return_value=True), \
+             patch("app.get_user_watchlist", return_value=[]):
 
-        add_response = client.post(
-            "/watchlist/add",
-            json=movie_data,
-            content_type="application/json",
-        )
-        assert add_response.status_code == 200
-        assert len(wl) == 1
+            remove_response = client.post(
+                "/watchlist/remove",
+                json={"id": 88888},
+                content_type="application/json",
+            )
 
-        remove_response = client.post(
-            "/watchlist/remove",
-            json={"id": 88888},
-            content_type="application/json",
-        )
+            assert remove_response.status_code == 200
 
-        assert remove_response.status_code == 200
+            response_data = remove_response.get_json()
+            assert response_data["success"] is True
+            assert response_data["message"] == "Movie removed from watchlist"
 
-        response_data = remove_response.get_json()
-        assert response_data["success"] is True
-        assert response_data["message"] == "Movie removed from watchlist"
-        assert len(wl) == 0
 
     def test_should_fail_when_adding_duplicate_movie(self, client):
         """Test that adding a duplicate movie to watchlist fails"""
-        from app import watchlist as wl
+        # Mock session
+        with client.session_transaction() as sess:
+            sess["user_id"] = 1
 
         movie_data = {
             "id": 77777,
@@ -163,37 +157,35 @@ class TestDevOpsFlixComprehensiveFeatureTests:
             "poster_path": "/dup_poster.jpg",
         }
 
-        response1 = client.post(
-            "/watchlist/add",
-            json=movie_data,
-            content_type="application/json",
-        )
-        assert response1.status_code == 200
+        # Mock is_in_watchlist to return True (duplicate)
+        with patch("app.is_in_watchlist", return_value=True):
+            response = client.post(
+                "/watchlist/add",
+                json=movie_data,
+                content_type="application/json",
+            )
+            assert response.status_code == 400
 
-        response2 = client.post(
-            "/watchlist/add",
-            json=movie_data,
-            content_type="application/json",
-        )
-        assert response2.status_code == 400
-
-        response_data = response2.get_json()
-        assert response_data["success"] is False
-        assert "already in watchlist" in response_data["message"]
-
-        assert len(wl) == 1
+            response_data = response.get_json()
+            assert response_data["success"] is False
+            assert "already in watchlist" in response_data["message"]
 
     def test_should_return_404_when_removing_nonexistent_movie(self, client):
         """Test that removing a non-existent movie returns 404"""
-        response = client.post(
-            "/watchlist/remove",
-            json={"id": 99999999},
-            content_type="application/json",
-        )
+        # Mock session
+        with client.session_transaction() as sess:
+            sess["user_id"] = 1
 
-        assert response.status_code == 404
-        response_data = response.get_json()
-        assert response_data["success"] is False
+        with patch("app.db_remove_from_watchlist", return_value=False):
+            response = client.post(
+                "/watchlist/remove",
+                json={"id": 99999999},
+                content_type="application/json",
+            )
+
+            assert response.status_code == 404
+            response_data = response.get_json()
+            assert response_data["success"] is False
 
     def test_should_return_json_results_for_search_endpoint(self, client):
         """Test the search endpoint returns proper JSON"""
