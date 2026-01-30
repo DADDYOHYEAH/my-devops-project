@@ -22,9 +22,6 @@
 ### Personal Watchlist
 ![Watchlist](screenshots/watchlist.png)
 
-### Kubernetes Dashboard - Horizontal Scaling
-![Kubernetes](screenshots/kubernetes.png)
-
 ---
 
 ## 🌟 Features
@@ -213,17 +210,15 @@ my-devops-project/
 
 ## 🔐 Environment Variables
 
-+----------------+------------------------------+-----------------------------+
-| Variable       | Description                  | Required / Setup            |
-+----------------+------------------------------+-----------------------------+
-| SECRET_KEY     | Flask session secret         | [X] Required                |
-| TMDB_API_KEY   | TMDB API key                 | [X] Required                |
-| DB_HOST        | PostgreSQL host (production) | [!] Auto-set by Render/K8s  |
-| DB_USER        | Database username            | [!] Auto-set by Render/K8s  |
-| DB_PASSWORD    | Database password            | [!] Auto-set by Render/K8s  |
-| DB_NAME        | Database name                | [!] Auto-set by Render/K8s  |
-| DB_PATH        | SQLite file path (local)     | [!] Defaults: devopsflix.db |
-+----------------+------------------------------+-----------------------------+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `SECRET_KEY` | Flask session secret | ✅ Required |
+| `TMDB_API_KEY` | TMDB API key | ✅ Required |
+| `DB_HOST` | PostgreSQL host (production) | ⚠️ Auto-set by Render/K8s |
+| `DB_USER` | Database username | ⚠️ Auto-set by Render/K8s |
+| `DB_PASSWORD` | Database password | ⚠️ Auto-set by Render/K8s |
+| `DB_NAME` | Database name | ⚠️ Auto-set by Render/K8s |
+| `DB_PATH` | SQLite file path (local) | ⚠️ Defaults to `devopsflix.db` |
 
 ---
 
@@ -272,15 +267,13 @@ Every push triggers:
 
 ## 📈 Performance & Scalability
 
-+----------------------+-----------------------------+
-| Metric               | Value                       |
-+----------------------+-----------------------------+
-| Response Time        | < 200ms (cached)            |
-| Concurrent Users     | 100+ (with 3 pods)          |
-| Database Connections | Pooled & optimized          |
-| Uptime               | 99.9% on Render free tier   |
-| Horizontal Scaling   | Auto-scales 2-10 pods       |
-+----------------------+-----------------------------+
+| Metric | Value |
+|--------|-------|
+| **Response Time** | < 200ms (cached) |
+| **Concurrent Users** | 100+ (with 3 pods) |
+| **Database Connections** | Pooled & optimized |
+| **Uptime** | 99.9% on Render free tier |
+| **Horizontal Scaling** | Auto-scales 2-10 pods |
 
 ---
 
