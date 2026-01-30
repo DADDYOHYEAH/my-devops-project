@@ -11,6 +11,10 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   # JOB 1: Continuous Integration (Test)
   # This job acts as a "Gatekeeper" to ensure only high-quality, secure code is allowed to proceed. 
@@ -49,7 +53,7 @@ jobs:
       - name: Run Tests with Coverage Report
         # This generates a hidden file 'coverage.xml' full of data
         run: |
-          pytest -v --cov=app --cov-report=xml --junitxml=pytest.xml
+          pytest --cov=app --cov-report=xml --junitxml=pytest.xml
 
       - name: Create Coverage Dashboard
         # This Action takes that file and makes it look "Cool" on the Summary Page
