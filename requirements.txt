@@ -6,3 +6,4 @@ pip-audit
 flake8
 filelock==3.20.3
 pytest-sugar
+pytest-cov

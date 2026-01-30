@@ -46,10 +46,11 @@ jobs:
         # This ensures we don't deploy an application with insecure dependencies.
         run: pip-audit
 
-      - name: Run Automated Tests  
-        # QUALITY: Executes the test suite in test_app.py to verify feature functionality. [cite: 11, 36]
-        # Only if all tests pass can the code be merged or used further. 
-        run: pytest -v 
+      - name: Run Automated Tests
+        # --cov=app : Check the 'app.py' file
+        # --cov-report=term-missing : Show the table in the terminal + line numbers missed
+        run: |
+          pytest -v --cov=app --cov-report=term-missing
 
   # JOB 2: Continuous Deployment (Build)
   # This job only runs if the 'test' job passes successfully (the 'needs: test' dependency). 
