@@ -166,7 +166,7 @@ class TestIntegrationWorkflows:
             'poster_path': '/post_logout.jpg'
         })
         assert response.status_code == 401
-        assert b'Unauthorized' in response.data or response_data['success'] is False
+        assert "Unauthorized" in response.get_json()["message"]
 
     def test_duplicate_prevention_in_workflow(self, client):
         """
