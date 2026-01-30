@@ -89,7 +89,9 @@ class TestIntegrationWorkflows:
         assert response.status_code == 200
         response_data = response.get_json()
         assert response_data['success'] is True
-        assert len(wl) == 1
+        # Check success message or response data instead of accessing in-memory list directly
+        # Since we're using database for logged-in users, checking 'wl' will fail (it's empty)
+        assert len(response_data['watchlist']) == 1
         
         # Step 4: User adds another movie
         response = client.post('/watchlist/add', json={
@@ -98,15 +100,18 @@ class TestIntegrationWorkflows:
             'poster_path': '/integration_test2.jpg'
         })
         assert response.status_code == 200
-        assert len(wl) == 2
+        response_data = response.get_json()
+        assert len(response_data['watchlist']) == 2
         
         # Step 5: Verify watchlist contains both movies
         response = client.get('/watchlist')
         assert response.status_code == 200
         data = response.get_json()
         assert len(data['watchlist']) == 2
-        assert data['watchlist'][0]['title'] == 'Integration Test Movie'
-        assert data['watchlist'][1]['title'] == 'Second Integration Movie'
+        # Database might return in different order (DESC by added_at)
+        titles = [m['title'] for m in data['watchlist']]
+        assert 'Integration Test Movie' in titles
+        assert 'Second Integration Movie' in titles
         
         # Cleanup
         del USERS["integration_test_user"]
@@ -116,11 +121,25 @@ class TestIntegrationWorkflows:
         Integration Test: Session persistence when navigating between different routes
         Tests that login session is maintained across multiple page visits
         """
-        from app import USERS
+        from app import USERS, watchlist as wl
+        import sqlite3
         
+        # Clear legacy watchlist to prevent test pollution
+        wl.clear()
+    
         # Ensure admin user exists for testing
         if "admin" not in USERS:
             USERS["admin"] = "123"
+            
+        # Clean up admin's watchlist in DB to prevent duplicate errors
+        try:
+            conn = sqlite3.connect("devopsflix.db")
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM watchlist WHERE user_id = (SELECT id FROM users WHERE username = 'admin') AND movie_id = 999")
+            conn.commit()
+            conn.close()
+        except:
+            pass
         
         # Step 1: Login with admin account
         response = client.post('/login', data={

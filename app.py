@@ -9,7 +9,12 @@ import logging
 import re
 
 # Import database functions
-from database import init_db, get_user, create_user, check_user_exists
+from database import (
+    init_db, get_user, create_user, check_user_exists,
+    add_to_watchlist as db_add_to_watchlist,
+    remove_from_watchlist as db_remove_from_watchlist,
+    get_user_watchlist, is_in_watchlist
+)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -269,10 +274,19 @@ def login():
             logger.warning(f"LOGIN FAILED: Empty credentials from {request.remote_addr}")
             return render_template("login.html", error="Username and password are required")
 
-        # If credentials are valid, store username in session and redirect to index
-        if username in USERS and USERS[username] == password:
+        # Check database first, then fall back to in-memory dict
+        db_user = get_user(username)
+        
+        if db_user and db_user["password"] == password:
+            # User found in database
             session["user"] = username
-            logger.info(f"LOGIN SUCCESS: User '{username}' logged in from {request.remote_addr}")
+            session["user_id"] = db_user["id"]  # Store user_id for watchlist
+            logger.info(f"LOGIN SUCCESS: User '{username}' (ID: {db_user['id']}) logged in from {request.remote_addr}")
+            return redirect(url_for("index"))
+        elif username in USERS and USERS[username] == password:
+            # Fallback to in-memory dict (for legacy compatibility)
+            session["user"] = username
+            logger.info(f"LOGIN SUCCESS (legacy): User '{username}' logged in from {request.remote_addr}")
             return redirect(url_for("index"))
         
         # If login fails, reload login page with error message
@@ -286,6 +300,8 @@ def login():
 @app.route("/logout")
 def logout():
     session.pop("user", None) # Removes 'user' from session
+    session.pop("user_id", None) # Removes 'user_id' from session
+    session.clear() # Good practice to clear everything
     return redirect(url_for("index")) # Redirects back to homepage
 
 
@@ -497,20 +513,30 @@ def add_to_watchlist():
     if not all([movie_id, title]):
         return jsonify({"success": False, "message": "Missing required fields"}), 400
     
-    # Check if movie already in watchlist
-    for movie in watchlist:
-        if movie["id"] == movie_id:
+    # Get user_id from session (set during database login)
+    user_id = session.get("user_id")
+    
+    if user_id:
+        # Database mode: Add to user's personal watchlist
+        if is_in_watchlist(user_id, movie_id):
             return jsonify({"success": False, "message": "Movie already in watchlist"}), 400
-    
-    movie_entry = {
-        "id": movie_id,
-        "title": title,
-        "poster_path": poster_path
-    }
-    watchlist.append(movie_entry)
-    logger.info(f"WATCHLIST ADD: Movie '{title}' (ID: {movie_id}) added from {request.remote_addr}")
-    
-    return jsonify({"success": True, "message": "Movie added to watchlist", "watchlist": watchlist})
+        
+        if db_add_to_watchlist(user_id, movie_id, title, poster_path):
+            logger.info(f"WATCHLIST ADD: Movie '{title}' (ID: {movie_id}) added for user_id {user_id}")
+            user_watchlist = get_user_watchlist(user_id)
+            return jsonify({"success": True, "message": "Movie added to watchlist", "watchlist": user_watchlist})
+        else:
+            return jsonify({"success": False, "message": "Failed to add movie"}), 500
+    else:
+        # Legacy mode: Use in-memory list for guests
+        for movie in watchlist:
+            if movie["id"] == movie_id:
+                return jsonify({"success": False, "message": "Movie already in watchlist"}), 400
+        
+        movie_entry = {"id": movie_id, "title": title, "poster_path": poster_path}
+        watchlist.append(movie_entry)
+        logger.info(f"WATCHLIST ADD (guest): Movie '{title}' (ID: {movie_id}) added from {request.remote_addr}")
+        return jsonify({"success": True, "message": "Movie added to watchlist", "watchlist": watchlist})
 
 
 @app.route("/watchlist/remove", methods=["POST"])  # removes a movie form watchlist . if id isnt ffound it returns 404 error
@@ -526,23 +552,42 @@ def remove_from_watchlist():
     if not movie_id:
         return jsonify({"success": False, "message": "Movie ID required"}), 400
     
-    original_length = len(watchlist)
-    # Find and remove the movie in place (don't reassign the list)
-    for i, movie in enumerate(watchlist):
-        if movie["id"] == movie_id:
-            watchlist.pop(i)
-            break
+    user_id = session.get("user_id")
     
-    if len(watchlist) == original_length:
-        return jsonify({"success": False, "message": "Movie not found in watchlist"}), 404
-    
-    return jsonify({"success": True, "message": "Movie removed from watchlist", "watchlist": watchlist})
+    if user_id:
+        # Database mode: Remove from user's personal watchlist
+        if db_remove_from_watchlist(user_id, movie_id):
+            logger.info(f"WATCHLIST REMOVE: Movie {movie_id} removed for user_id {user_id}")
+            user_watchlist = get_user_watchlist(user_id)
+            return jsonify({"success": True, "message": "Movie removed from watchlist", "watchlist": user_watchlist})
+        else:
+            return jsonify({"success": False, "message": "Movie not found in watchlist"}), 404
+    else:
+        # Legacy mode: Use in-memory list for guests
+        original_length = len(watchlist)
+        for i, movie in enumerate(watchlist):
+            if movie["id"] == movie_id:
+                watchlist.pop(i)
+                break
+        
+        if len(watchlist) == original_length:
+            return jsonify({"success": False, "message": "Movie not found in watchlist"}), 404
+        
+        return jsonify({"success": True, "message": "Movie removed from watchlist", "watchlist": watchlist})
 
 
 @app.route("/watchlist")  # allows rhe full list as json data .
 def get_watchlist():
     """Get current watchlist"""
-    return jsonify({"watchlist": watchlist})
+    user_id = session.get("user_id")
+    
+    if user_id:
+        # Database mode: Get user's personal watchlist
+        user_watchlist = get_user_watchlist(user_id)
+        return jsonify({"watchlist": user_watchlist})
+    else:
+        # Legacy mode: Return in-memory list
+        return jsonify({"watchlist": watchlist})
 
 
 # ============================================================
