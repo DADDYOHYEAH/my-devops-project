@@ -40,11 +40,23 @@ class TestIntegrationWorkflows:
         Tests multiple components working together in a realistic user scenario
         """
         from app import USERS, watchlist as wl
+        import sqlite3
         
-        # Clear any existing test data
+        # Clear any existing test data from in-memory storage
         if "integration_test_user" in USERS:
             del USERS["integration_test_user"]
         wl.clear()
+        
+        # Also clear from database if exists
+        try:
+            conn = sqlite3.connect("devopsflix.db")
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM users WHERE username = ?", ("integration_test_user",))
+            cursor.execute("DELETE FROM watchlist WHERE user_id IN (SELECT id FROM users WHERE username = ?)", ("integration_test_user",))
+            conn.commit()
+            conn.close()
+        except:
+            pass  # Database might not exist yet, that's ok
         
         # Step 1: User signs up
         response = client.post('/signup', data={
@@ -54,7 +66,9 @@ class TestIntegrationWorkflows:
             'confirm_password': 'testpass123'
         }, follow_redirects=True)
         assert response.status_code == 200
-        assert b'Account created successfully' in response.data
+        # After signup, user should be redirected to login page
+        assert b'Sign In' in response.data or b'sign in' in response.data.lower()
+        # User should be in both database and in-memory dict
         assert "integration_test_user" in USERS
         
         # Step 2: User logs in with new account

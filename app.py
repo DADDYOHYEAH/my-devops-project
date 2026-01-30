@@ -1,5 +1,5 @@
 # Flask needs sessions to remember “this user is logged in”.
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, flash
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from dotenv import load_dotenv
@@ -7,6 +7,9 @@ import requests
 import os
 import logging
 import re
+
+# Import database functions
+from database import init_db, get_user, create_user, check_user_exists
 
 # Load environment variables from .env file
 load_dotenv()
@@ -47,6 +50,13 @@ watchlist = []
 USERS = {
     "admin": "123"
 }
+
+# ============================================================
+# DATABASE INITIALIZATION
+# ============================================================
+# Initialize database on app startup
+init_db()
+logger.info("Database initialized successfully")
 
 @app.route("/health")
 def health_check():
@@ -304,14 +314,24 @@ def signup():
         if len(password) < 4:
             return render_template("signup.html", error="Password must be at least 4 characters")
         
-        if username in USERS:
+        # Check if user exists in database
+        if check_user_exists(username):
             return render_template("signup.html", error="Username already exists")
         
-        # Add new user to USERS dictionary (in-memory, resets on server restart)
-        USERS[username] = password
+        # Create user in database
+        user_id = create_user(username, email, password)
         
-        # Redirect to login page with success message
-        return render_template("signup.html", success="Account created successfully! You can now sign in.")
+        if user_id:
+            # Also update legacy in-memory dict for compatibility during migration
+            USERS[username] = password
+            logger.info(f"SIGNUP SUCCESS: User '{username}' created with ID {user_id}")
+            
+            # Redirect to login page with success message
+            flash("Account created successfully! Please log in.")
+            return redirect(url_for("login"))
+        else:
+            logger.error(f"SIGNUP FAILED: Error creating user '{username}'")
+            return render_template("signup.html", error="Error creating account. Please try again.")
     
     # Render signup page on GET request
     return render_template("signup.html")
