@@ -1,12 +1,21 @@
-
 # Flask needs sessions to remember “this user is logged in”.
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 import requests
 import os
 
 app = Flask(__name__)
 # Secret key for session management. Flask signs session cookies using secret_key
 app.secret_key = os.environ.get("SECRET_KEY", "devopsflix-secret")
+
+# Rate Limiting - Prevents API abuse and spam attacks
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://"
+)
 
 # TMDB API Configuration
 # Replace with your actual TMDB API key
@@ -221,6 +230,7 @@ def fetch_watch_providers(media_type, media_id, title):
         return None
 
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("10 per minute")  # Prevent brute force password attacks
 def login():
     # Read username and password from submitted HTML form
     if request.method == "POST":
@@ -246,6 +256,7 @@ def logout():
 
 
 @app.route("/signup", methods=["GET", "POST"])
+@limiter.limit("5 per hour")  # Prevent spam account creation
 def signup():
     """Handle user registration"""
     if request.method == "POST":
@@ -307,6 +318,7 @@ def search_page():
     )
 
 @app.route("/api/search")  # created a dedicaeted API endpoint for search . this returns json data instead of html . this allows the frontend to update search result as instantly as the user types without haveing to reload the whole page
+@limiter.limit("60 per minute")  # Prevent API abuse - max 1 search per second
 def search():
     """Search endpoint for querying movies and TV series"""
     query = request.args.get("q", "")
@@ -413,6 +425,7 @@ def get_tv_details_api(tv_id):
 
 
 @app.route("/watchlist/add", methods=["POST"])   # validation logic here to prevent duplicate entry . returns 400 error if aalready in the list 
+@limiter.limit("30 per minute")  # Prevent watchlist spam
 def add_to_watchlist():
     """Add a movie to the watchlist"""
     data = request.get_json()
