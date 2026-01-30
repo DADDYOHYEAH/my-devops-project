@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import requests
 import os
 import logging
+import re
 
 # Load environment variables from .env file
 load_dotenv()
@@ -250,8 +251,13 @@ def fetch_watch_providers(media_type, media_id, title):
 def login():
     # Read username and password from submitted HTML form
     if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+
+        # Input validation: Check for empty fields first
+        if not username or not password:
+            logger.warning(f"LOGIN FAILED: Empty credentials from {request.remote_addr}")
+            return render_template("login.html", error="Username and password are required")
 
         # If credentials are valid, store username in session and redirect to index
         if username in USERS and USERS[username] == password:
@@ -286,6 +292,11 @@ def signup():
         # Validation checks
         if not all([email, username, password, confirm_password]):
             return render_template("signup.html", error="All fields are required")
+        
+        # Email format validation
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            return render_template("signup.html", error="Please enter a valid email address")
         
         if password != confirm_password:
             return render_template("signup.html", error="Passwords do not match")
@@ -339,9 +350,15 @@ def search_page():
 @limiter.limit("500 per minute")  # High limit for classroom demo with 30+ students
 def search():
     """Search endpoint for querying movies and TV series"""
-    query = request.args.get("q", "")
+    query = request.args.get("q", "").strip()
+    
+    # Input validation: Check for empty or too long queries
     if not query:
         return jsonify({"results": []})
+    
+    if len(query) > 100:
+        logger.warning(f"SEARCH REJECTED: Query too long ({len(query)} chars) from {request.remote_addr}")
+        return jsonify({"error": "Search query too long (max 100 characters)"}), 400
     
     logger.info(f"SEARCH: User searched for '{query}' from {request.remote_addr}")
     

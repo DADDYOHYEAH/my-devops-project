@@ -251,7 +251,7 @@ class TestDevOpsFlixComprehensiveFeatureTests:
         }
         response = client.post("/login", data=login_data, follow_redirects=True)
         assert response.status_code == 200
-        assert b"Invalid credentials" in response.data
+        assert b"Username and password are required" in response.data
 
     def test_get_movie_details(self, client):
         """Test the movie detail page with streaming providers"""
