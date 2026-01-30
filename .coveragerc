@@ -1,0 +1,10 @@
+[run]
+relative_files = true
+source = .
+
+[report]
+precision = 2
+show_missing = true
+
+[xml]
+output = coverage.xml
