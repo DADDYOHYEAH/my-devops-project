@@ -9,4 +9,4 @@ pytest-cov
 flask-limiter
 python-dotenv
 psycopg2-binary==2.9.9
-gunicorn==21.2.0
+gunicorn==22.0.0
