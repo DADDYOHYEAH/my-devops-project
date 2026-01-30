@@ -492,8 +492,25 @@ def get_watchlist():
     return jsonify({"watchlist": watchlist})
 
 
+# ============================================================
+# ERROR HANDLERS - Custom error pages for better UX
+# ============================================================
+
+@app.errorhandler(404)
+def page_not_found(e):
+    """Handle 404 errors - page not found"""
+    return render_template("404.html"), 404
+
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    """Handle 500 errors - internal server error"""
+    return render_template("500.html"), 500
+
+
 if __name__ == "__main__":
     # Get the PORT from Render, or use 5000 if running locally
     port = int(os.environ.get("PORT", 5000))
     # Turn off debug mode in production (optional, but good practice)
     app.run(host="0.0.0.0", port=port)
+
