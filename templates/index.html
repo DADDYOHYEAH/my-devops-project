@@ -393,41 +393,44 @@
         </section>
 
         <!-- My Watchlist Section -->
-        <section id="watchlist" class="movie-section watchlist-section">
+        <section id="watchlist" class="movie-section">
             <h2 class="section-title">📺 My Watchlist</h2>
-            <div class="watchlist-container" id="watchlist-container">
-                {% if watchlist %}
-                <div class="movie-carousel" id="watchlist-carousel">
-                    {% for movie in watchlist %}
-                    <div class="movie-card watchlist-card" data-id="{{ movie.id }}"
-                        onclick="openMovieModal({{ movie.id }})">
-                        <div class="movie-poster">
-                            {% if movie.poster_path %}
-                            <img src="{{ image_base }}{{ movie.poster_path }}" alt="{{ movie.title }}" loading="lazy">
-                            {% else %}
-                            <div class="no-poster">No Image</div>
-                            {% endif %}
-                            <div class="movie-overlay">
-                                <div class="overlay-content">
-                                    <h4 class="overlay-title">{{ movie.title }}</h4>
-                                    <div class="overlay-buttons">
-                                        <button class="overlay-btn play-btn"
-                                            onclick="event.stopPropagation();">▶</button>
-                                        <button class="overlay-btn remove-btn"
-                                            onclick="event.stopPropagation(); removeFromWatchlist({{ movie.id }})">✕</button>
+            <div class="carousel-container">
+                <div class="watchlist-container" id="watchlist-container">
+                    {% if watchlist %}
+                    <div class="movie-carousel" id="watchlist-carousel">
+                        {% for movie in watchlist %}
+                        <div class="movie-card watchlist-card" data-id="{{ movie.id }}"
+                            onclick="openMovieModal({{ movie.id }})">
+                            <div class="movie-poster">
+                                {% if movie.poster_path %}
+                                <img src="{{ image_base }}{{ movie.poster_path }}" alt="{{ movie.title }}"
+                                    loading="lazy">
+                                {% else %}
+                                <div class="no-poster">No Image</div>
+                                {% endif %}
+                                <div class="movie-overlay">
+                                    <div class="overlay-content">
+                                        <h4 class="overlay-title">{{ movie.title }}</h4>
+                                        <div class="overlay-buttons">
+                                            <button class="overlay-btn play-btn"
+                                                onclick="event.stopPropagation();">▶</button>
+                                            <button class="overlay-btn remove-btn"
+                                                onclick="event.stopPropagation(); removeFromWatchlist({{ movie.id }})">✕</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                        {% endfor %}
                     </div>
-                    {% endfor %}
+                    {% else %}
+                    <div class="empty-watchlist">
+                        <p>Your watchlist is empty</p>
+                        <span>Click the + button on any movie to add it here</span>
+                    </div>
+                    {% endif %}
                 </div>
-                {% else %}
-                <div class="empty-watchlist">
-                    <p>Your watchlist is empty</p>
-                    <span>Click the + button on any movie to add it here</span>
-                </div>
-                {% endif %}
             </div>
         </section>
     </main>
