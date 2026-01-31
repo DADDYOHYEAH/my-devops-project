@@ -6,6 +6,7 @@ Supports dual-mode operation:
 """
 import os
 import logging
+import bcrypt
 
 logger = logging.getLogger(__name__)
 
@@ -163,6 +164,62 @@ def init_db():
 
 
 # ============================================================
+# PASSWORD SECURITY FUNCTIONS
+# ============================================================
+
+def hash_password(password):
+    """Hash a password using bcrypt."""
+    salt = bcrypt.gensalt()
+    password_hash = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return password_hash.decode('utf-8')
+
+
+def check_password(username, password):
+    """
+    Verify password with backward compatibility.
+    Supports both hashed (new) and plain text (legacy) passwords.
+    Auto-upgrades plain text passwords to hashed on successful login.
+    
+    Returns:
+        bool: True if password is correct, False otherwise
+    """
+    user = get_user(username)
+    if not user:
+        return False
+    
+    stored_password = user['password']
+    
+    # Check if it's a bcrypt hash (new users)
+    if stored_password.startswith(('$2b$', '$2a$', '$2y$')):
+        try:
+            # Verify hashed password
+            return bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8'))
+        except (ValueError, AttributeError) as e:
+            # Malformed hash, fail safely
+            logger.error(f"Invalid hash format for user {username}: {e}")
+            return False
+    
+    # Legacy plain text password (old users)
+    if stored_password == password:
+        # Auto-upgrade to hashed password
+        logger.info(f"Auto-upgrading password for user: {username}")
+        new_hash = hash_password(password)
+        upgrade_user_password(username, new_hash)
+        return True
+    
+    return False
+
+
+def upgrade_user_password(username, password_hash):
+    """Upgrade a user's password to a hashed version."""
+    execute_query(
+        "UPDATE users SET password = ? WHERE username = ?",
+        (password_hash, username)
+    )
+    logger.info(f"Password upgraded for user: {username}")
+
+
+# ============================================================
 # USER OPERATIONS
 # ============================================================
 
@@ -187,13 +244,16 @@ def get_user(username):
 def create_user(username, email, password):
     """Create a new user. Returns user_id or None if failed."""
     try:
+        # Hash password before storing
+        password_hash = hash_password(password)
+        
         if USE_POSTGRES:
             # PostgreSQL: Use RETURNING to get the new ID
             conn = get_db_connection()
             cursor = conn.cursor()
             cursor.execute(
                 "INSERT INTO users (username, email, password) VALUES (%s, %s, %s) RETURNING id",
-                (username, email, password)
+                (username, email, password_hash)
             )
             user_id = cursor.fetchone()['id']
             conn.commit()
@@ -202,10 +262,10 @@ def create_user(username, email, password):
             # SQLite: Use lastrowid
             user_id = execute_query(
                 "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
-                (username, email, password)
+                (username, email, password_hash)
             )
         
-        logger.info(f"USER CREATED: {username} (ID: {user_id})")
+        logger.info(f"USER CREATED: {username} (ID: {user_id}, password hashed)")
         return user_id
     
     except Exception as e:

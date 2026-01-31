@@ -13,7 +13,7 @@ from database import (
     init_db, get_user, create_user, check_user_exists,
     add_to_watchlist as db_add_to_watchlist,
     remove_from_watchlist as db_remove_from_watchlist,
-    get_user_watchlist, is_in_watchlist
+    get_user_watchlist, is_in_watchlist, check_password
 )
 
 # Load environment variables from .env file
@@ -32,6 +32,20 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 # Secret key for session management. Flask signs session cookies using secret_key
 app.secret_key = os.environ.get("SECRET_KEY", "devopsflix-secret")
+
+# ============================================================
+# SECURE COOKIE CONFIGURATION
+# ============================================================
+# Detect production environment (Render sets RENDER env var, K8s has DB_HOST)
+IS_PRODUCTION = os.environ.get('RENDER') or os.environ.get('DB_HOST')
+
+# Security settings for session cookies
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access (XSS protection)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
+app.config['SESSION_COOKIE_SECURE'] = bool(IS_PRODUCTION)  # HTTPS only in production
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour session timeout
+
+logger.info(f"Cookie security: HTTPS-only={bool(IS_PRODUCTION)} (Production={bool(IS_PRODUCTION)})")
 
 # Rate Limiting - Prevents API abuse and spam attacks
 # High limits for classroom demo with 30+ students on same WiFi
@@ -268,11 +282,10 @@ def login():
             logger.warning(f"LOGIN FAILED: Empty credentials from {request.remote_addr}")
             return render_template("login.html", error="Username and password are required")
 
-        # Check database first, then fall back to in-memory dict
-        db_user = get_user(username)
-        
-        if db_user and db_user["password"] == password:
-            # User found in database
+        # Use secure password checking (supports both hashed and legacy plain text)
+        if check_password(username, password):
+            # Password verified successfully
+            db_user = get_user(username)
             session["user"] = username
             session["user_id"] = db_user["id"]  # Store user_id for watchlist
             logger.info(f"LOGIN SUCCESS: User '{username}' (ID: {db_user['id']}) logged in from {request.remote_addr}")
