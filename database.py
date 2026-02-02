@@ -4,6 +4,8 @@ Supports dual-mode operation:
 - Local mode: SQLite (when DB_HOST not set)
 - Production mode: PostgreSQL (when DB_HOST is set)
 """
+
+# done by ageelan
 import os
 import logging
 import bcrypt
