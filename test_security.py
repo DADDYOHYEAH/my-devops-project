@@ -1,91 +1,180 @@
 """
-Test script to verify backward-compatible password hashing
+DevOps Flix - Security Test Suite
+Pytest tests for password hashing, backward compatibility, and cookie security
 """
+
+import pytest
 import sys
 import os
-sys.path.insert(0, '.')
 
-from database import init_db, execute_query, hash_password, check_password, get_user
+# Add parent directory to path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-print("=" * 60)
-print("SECURITY IMPLEMENTATION TEST")
-print("=" * 60)
+from database import (
+    init_db, execute_query, hash_password, check_password,
+    get_user, create_user
+)
+import app
 
-# Initialize database
-print("\n1. Initializing test database...")
-init_db()
 
-# Test 1: Create new user with hashed password
-print("\n2. Testing NEW USER (hashed password)...")
-try:
-    # Clean up if user exists
-    execute_query("DELETE FROM users WHERE username = ?", ("testuser",))
+@pytest.fixture(autouse=True)
+def setup_database():
+    """Initialize database before each test"""
+    init_db()
+    yield
+    # Cleanup happens automatically since tests use isolated transactions
+
+
+class TestPasswordSecurity:
+    """Test password hashing and backward compatibility"""
     
-    from database import create_user
-    create_user("testuser", "test@example.com", "SecurePass123")
-    
-    user = get_user("testuser")
-    print(f"   OK User created: {user['username']}")
-    print(f"   OK Password is hashed: {user['password'][:30]}...")
-    print(f"   OK Hash starts with $2b$: {user['password'].startswith('$2b$')}")
-    
-    # Test login
-    if check_password("testuser", "SecurePass123"):
-        print("   OK Login with correct password: SUCCESS")
-    else:
-        print("   FAIL Login FAILED (should have succeeded!)")
+    def test_new_user_password_is_hashed(self):
+        """Test that new users get bcrypt-hashed passwords"""
+        # Clean up if user exists
+        execute_query("DELETE FROM users WHERE username = ?", ("testuser_new",))
         
-    if not check_password("testuser", "WrongPassword"):
-        print("   OK Login with wrong password: Correctly rejected")
-    else:
-        print("   FAIL Wrong password accepted (BUG!)")
+        # Create new user
+        user_id = create_user("testuser_new", "test@example.com", "SecurePass123")
         
-except Exception as e:
-    print(f"   FAIL ERROR: {e}")
-
-# Test 2: Legacy user with plain text password
-print("\n3. Testing LEGACY USER (plain text password)...")
-try:
-    # Simulate old user with plain text password
-    execute_query("DELETE FROM users WHERE username = ?", ("olduser",))
-    execute_query(
-        "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
-        ("olduser", "old@example.com", "plaintext123")
-    )
+        assert user_id is not None, "User creation should succeed"
+        
+        # Verify password is hashed
+        user = get_user("testuser_new")
+        assert user is not None
+        assert user['password'].startswith('$2b$'), "Password should be bcrypt-hashed"
+        assert len(user['password']) > 50, "Hashed password should be long"
+        assert user['password'] != "SecurePass123", "Password should not be plain text"
+        
+        # Cleanup
+        execute_query("DELETE FROM users WHERE username = ?", ("testuser_new",))
     
-    user = get_user("olduser")
-    print(f"   OK Legacy user created: {user['username']}")
-    print(f"   OK Password is plain text: {user['password']}")
+    def test_new_user_login_with_correct_password(self):
+        """Test that login works with correct hashed password"""
+        # Clean up if user exists
+        execute_query("DELETE FROM users WHERE username = ?", ("testuser_login",))
+        
+        # Create new user
+        create_user("testuser_login", "login@example.com", "MyPassword456")
+        
+        # Test login with correct password
+        assert check_password("testuser_login", "MyPassword456") == True
+        
+        # Cleanup
+        execute_query("DELETE FROM users WHERE username = ?", ("testuser_login",))
     
-    # Test login (should work and auto-upgrade)
-    if check_password("olduser", "plaintext123"):
-        print("   OK Login with plain text password: SUCCESS")
+    def test_new_user_login_rejects_wrong_password(self):
+        """Test that login fails with incorrect password"""
+        # Clean up if user exists
+        execute_query("DELETE FROM users WHERE username = ?", ("testuser_wrong",))
         
-        # Check if password was upgraded
-        user_after = get_user("olduser")
-        if user_after['password'].startswith('$2b$'):
-            print("   OK Password AUTO-UPGRADED to hash!")
-            print(f"   OK New hash: {user_after['password'][:30]}...")
-        else:
-            print("   FAIL Password was NOT upgraded (BUG!)")
-    else:
-        print("   FAIL Login FAILED (should have succeeded!)")
+        # Create new user
+        create_user("testuser_wrong", "wrong@example.com", "CorrectPass789")
         
-except Exception as e:
-    print(f"   FAIL ERROR: {e}")
+        # Test login with wrong password
+        assert check_password("testuser_wrong", "WrongPassword") == False
+        assert check_password("testuser_wrong", "incorrectpass789") == False
+        assert check_password("testuser_wrong", "") == False
+        
+        # Cleanup
+        execute_query("DELETE FROM users WHERE username = ?", ("testuser_wrong",))
+    
+    def test_legacy_user_plain_text_login_works(self):
+        """Test that legacy users with plain text passwords can still log in"""
+        # Clean up if user exists
+        execute_query("DELETE FROM users WHERE username = ?", ("olduser",))
+        
+        # Simulate old user with plain text password (pre-security update)
+        execute_query(
+            "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
+            ("olduser", "old@example.com", "plaintext123")
+        )
+        
+        # Verify password is plain text
+        user = get_user("olduser")
+        assert user['password'] == "plaintext123", "Initial password should be plain text"
+        
+        # Test login (should work with backward compatibility)
+        assert check_password("olduser", "plaintext123") == True
+        
+        # Cleanup
+        execute_query("DELETE FROM users WHERE username = ?", ("olduser",))
+    
+    def test_legacy_user_password_auto_upgrade(self):
+        """Test that plain text passwords are automatically upgraded to hashed on login"""
+        # Clean up if user exists
+        execute_query("DELETE FROM users WHERE username = ?", ("upgradeuser",))
+        
+        # Create legacy user with plain text password
+        execute_query(
+            "INSERT INTO users (username, email, password) VALUES (?, ?, ?)",
+            ("upgradeuser", "upgrade@example.com", "oldpassword")
+        )
+        
+        # Verify initial state (plain text)
+        user_before = get_user("upgradeuser")
+        assert user_before['password'] == "oldpassword"
+        
+        # Login (should trigger auto-upgrade)
+        login_success = check_password("upgradeuser", "oldpassword")
+        assert login_success == True
+        
+        # Verify password was upgraded to hash
+        user_after = get_user("upgradeuser")
+        assert user_after['password'].startswith('$2b$'), "Password should be upgraded to bcrypt hash"
+        assert user_after['password'] != "oldpassword", "Password should no longer be plain text"
+        
+        # Verify login still works with the same password after upgrade
+        assert check_password("upgradeuser", "oldpassword") == True
+        
+        # Cleanup
+        execute_query("DELETE FROM users WHERE username = ?", ("upgradeuser",))
+    
+    def test_nonexistent_user_login_fails(self):
+        """Test that login fails for users that don't exist"""
+        assert check_password("nonexistentuser123", "anypassword") == False
 
-# Test 3: Cookie configuration
-print("\n4. Testing Cookie Security Configuration...")
-try:
-    import app
-    print(f"   OK HTTPS-only cookies: {app.app.config['SESSION_COOKIE_SECURE']}")
-    print(f"   OK HttpOnly enabled: {app.app.config['SESSION_COOKIE_HTTPONLY']}")
-    print(f"   OK SameSite protection: {app.app.config['SESSION_COOKIE_SAMESITE']}")
-    print(f"   OK Session timeout: {app.app.config['PERMANENT_SESSION_LIFETIME']}s")
-    print(f"   OK Production mode: {app.IS_PRODUCTION}")
-except Exception as e:
-    print(f"   FAIL ERROR: {e}")
 
-print("\n" + "=" * 60)
-print("TEST COMPLETE!")
-print("=" * 60)
+class TestCookieSecurity:
+    """Test secure cookie configuration"""
+    
+    def test_cookie_httponly_enabled(self):
+        """Test that HttpOnly flag is enabled (prevents XSS attacks)"""
+        assert app.app.config['SESSION_COOKIE_HTTPONLY'] == True
+    
+    def test_cookie_samesite_protection(self):
+        """Test that SameSite protection is configured (prevents CSRF)"""
+        assert app.app.config['SESSION_COOKIE_SAMESITE'] == 'Lax'
+    
+    def test_cookie_secure_adapts_to_environment(self):
+        """Test that HTTPS-only cookies are enabled in production, disabled locally"""
+        # The value should match IS_PRODUCTION detection
+        expected_secure = bool(app.IS_PRODUCTION)
+        assert app.app.config['SESSION_COOKIE_SECURE'] == expected_secure
+    
+    def test_session_timeout_configured(self):
+        """Test that session timeout is set (security best practice)"""
+        assert app.app.config['PERMANENT_SESSION_LIFETIME'] == 3600  # 1 hour
+
+
+class TestPasswordHashingUtilities:
+    """Test password hashing utility functions"""
+    
+    def test_hash_password_produces_bcrypt_hash(self):
+        """Test that hash_password function produces valid bcrypt hashes"""
+        password = "TestPassword123"
+        hashed = hash_password(password)
+        
+        assert hashed.startswith('$2b$'), "Should produce bcrypt hash"
+        assert len(hashed) > 50, "Bcrypt hash should be long"
+        assert hashed != password, "Hash should be different from plain text"
+    
+    def test_hash_password_produces_unique_hashes(self):
+        """Test that same password produces different hashes (salted)"""
+        password = "SamePassword"
+        hash1 = hash_password(password)
+        hash2 = hash_password(password)
+        
+        # Due to salt, same password should produce different hashes
+        assert hash1 != hash2, "Same password should produce different hashes (salt)"
+        assert hash1.startswith('$2b$')
+        assert hash2.startswith('$2b$')
