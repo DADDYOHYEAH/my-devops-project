@@ -52,8 +52,8 @@ def execute_query(query, params=None, fetch=None):
     """
     Execute a database query with automatic placeholder conversion.
     Args:
-        query: SQL query string (use ? for placeholders)
-        params: Tuple of parameters
+        query: SQL query string (use ? for placeholders) (sql command)
+        params: Tuple of parameters ( the actual data)
         fetch: 'one', 'all', or None (for INSERT/UPDATE/DELETE)
     Returns:
         Result of fetch operation or lastrowid/rowcount

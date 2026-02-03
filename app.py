@@ -41,10 +41,10 @@ app.secret_key = os.environ.get("SECRET_KEY", "devopsflix-secret")
 IS_PRODUCTION = os.environ.get('RENDER') or os.environ.get('DB_HOST')
 
 # Security settings for session cookies
-app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access (XSS protection)
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection
-app.config['SESSION_COOKIE_SECURE'] = bool(IS_PRODUCTION)  # HTTPS only in production
-app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour session timeout
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Prevent JavaScript access (XSS protection) Prevents: Hackers stealing cookies with <script>document.cookie</script>
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'  # CSRF protection  
+app.config['SESSION_COOKIE_SECURE'] = bool(IS_PRODUCTION)  # HTTPS only in production ( man in the middle attack prevents the hacker intercepting cookie on public wifi )
+app.config['PERMANENT_SESSION_LIFETIME'] = 3600  # 1 hour session timeout  ( the cookie expire after 1hour ) 
 
 logger.info(f"Cookie security: HTTPS-only={bool(IS_PRODUCTION)} (Production={bool(IS_PRODUCTION)})")
 
