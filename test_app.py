@@ -99,7 +99,7 @@ class TestDevOpsFlixComprehensiveFeatureTests:
             sess["user_id"] = 1
             sess["user"] = "testuser"
 
-        movie_data = {
+        movie_data = {          
             "id": 99999,
             "title": "Test Movie for Watchlist",
             "poster_path": "/test_poster.jpg",
