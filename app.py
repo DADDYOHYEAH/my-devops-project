@@ -274,9 +274,7 @@ def fetch_watch_providers(media_type, media_id, title):
 @limiter.limit("100 per minute")  # High limit for classroom demo
 def login():
     # Read username and password from submitted HTML form
-    if request.method == "POST":
-        username = request.form.get("username", "").strip()
-        password = request.form.get("password", "")
+    
 
         # Input validation: Check for empty fields first
         if not username or not password:
