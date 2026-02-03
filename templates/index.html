@@ -271,7 +271,7 @@
     </div>
 
     <!-- Auto-Rotating Hero Banner -->
-    <section class="hero" id="heroSection">
+    < class="hero" id="heroSection">
         {% for movie in trending[:10] %}
         <div class="hero-slide {% if loop.first %}active{% endif %}" data-index="{{ loop.index0 }}"
             style="background-image: linear-gradient(to right, rgba(10,10,10,1) 0%, rgba(10,10,10,0.7) 40%, rgba(10,10,10,0.3) 100%), url('{{ image_base }}{{ movie.backdrop_path or movie.poster_path }}');">
